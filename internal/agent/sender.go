@@ -45,10 +45,10 @@ func sendRequest(client *http.Client, url string) error {
 	}
 	req.Header.Set("Content-Type", "text/plain")
 
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
-
+	defer resp.Body.Close()
 	return nil
 }
