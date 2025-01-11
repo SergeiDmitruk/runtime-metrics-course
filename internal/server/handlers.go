@@ -15,7 +15,7 @@ const (
 	Counter = "counter"
 )
 
-func GetMetricValue(storage storage.StorageIface) http.HandlerFunc {
+func GetMetricValueHandler(storage storage.StorageIface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		name := strings.ToLower(chi.URLParam(r, "name"))
 
@@ -74,5 +74,32 @@ func UpdateHandler(storage storage.StorageIface) http.HandlerFunc {
 		storage.PrintMetrics()
 
 		w.WriteHeader(http.StatusOK)
+	}
+}
+func GetMetricsHandler(storage storage.StorageIface) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		gauges := storage.GetGauges()
+		counters := storage.GetCounters()
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+
+		html := "<!DOCTYPE html><html><head><title>Metrics</title></head><body>"
+		html += "<h1>Metrics</h1>"
+		html += "<h2>Gauge Metrics</h2><ul>"
+		for name, value := range gauges {
+			html += fmt.Sprintf("<li>%s: %.2f</li>", name, value)
+		}
+		html += "</ul>"
+		html += "<h2>Counter Metrics</h2><ul>"
+		for name, value := range counters {
+			html += fmt.Sprintf("<li>%s: %d</li>", name, value)
+		}
+		html += "</ul>"
+		html += "</body></html>"
+		_, err := w.Write([]byte(html))
+		if err != nil {
+			http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		}
 	}
 }

@@ -156,7 +156,7 @@ func TestGetMetricValue(t *testing.T) {
 
 			r := chi.NewRouter()
 			r.Route("/value", func(r chi.Router) {
-				r.Get("/{metric_type}/{name}", GetMetricValue(storage))
+				r.Get("/{metric_type}/{name}", GetMetricValueHandler(storage))
 			})
 
 			req := httptest.NewRequest(tt.method, tt.url, nil)

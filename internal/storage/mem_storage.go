@@ -50,6 +50,8 @@ func (m *MemStorage) GetCounters() map[string]int64 {
 }
 
 func (m *MemStorage) PrintMetrics() { // test stdout
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	fmt.Println("------Metrics-------")
 	for name, val := range m.gauges {
 		fmt.Println(name, val)

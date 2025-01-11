@@ -18,7 +18,7 @@ func SendMetrics(storage storage.StorageIface, serverAddress string) error {
 
 	for name, value := range gauges {
 		url := fmt.Sprintf("%s/update/gauge/%s/%f", serverAddress, name, value)
-		log.Printf("Sending gauge: %s", url)
+		//log.Printf("Sending gauge: %s", url)
 		if err := sendRequest(client, url); err != nil {
 			log.Printf("Error sending gauge %s: %v", name, err)
 			return err
@@ -27,7 +27,7 @@ func SendMetrics(storage storage.StorageIface, serverAddress string) error {
 
 	for name, value := range counters {
 		url := fmt.Sprintf("%s/update/counter/%s/%d", serverAddress, name, value)
-		log.Printf("Sending counter: %s", url)
+		//log.Printf("Sending counter: %s", url)
 		if err := sendRequest(client, url); err != nil {
 			log.Printf("Error sending counter %s: %v", name, err)
 			return err

@@ -15,7 +15,8 @@ func InitSever() error {
 		return err
 	}
 	r := chi.NewRouter()
-	r.Get("/value/{metric_type}/{name}", GetMetricValue(storage))
+	r.Get("/", GetMetricsHandler(storage))
+	r.Get("/value/{metric_type}/{name}", GetMetricValueHandler(storage))
 	r.Route("/update/{metric_type}/", func(r chi.Router) {
 		r.Post("/", http.NotFound)
 		r.Post("/{name}/{value}", UpdateHandler(storage))
