@@ -4,16 +4,23 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/go-chi/chi"
 	"github.com/runtime-metrics-course/internal/storage"
 )
 
 func InitSever() error {
-	mux := http.NewServeMux()
+
 	storage, err := storage.GetStorage()
 	if err != nil {
 		return err
 	}
-	mux.Handle("/update/", http.StripPrefix("/update/", http.HandlerFunc(UpdateHandler(storage))))
+	r := chi.NewRouter()
+	r.Get("/value/{metric_type}/{name}", GetMetricValue(storage))
+	r.Route("/update/{metric_type}/", func(r chi.Router) {
+		r.Post("/", http.NotFound)
+		r.Post("/{name}/{value}", UpdateHandler(storage))
+	})
+
 	log.Println("Server start")
-	return http.ListenAndServe(":8080", mux)
+	return http.ListenAndServe(":8080", r)
 }

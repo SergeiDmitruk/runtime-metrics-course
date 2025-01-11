@@ -1,10 +1,12 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/go-chi/chi"
 	"github.com/runtime-metrics-course/internal/storage"
 )
 
@@ -13,26 +15,42 @@ const (
 	Counter = "counter"
 )
 
-func UpdateHandler(storage storage.StorageIface) http.HandlerFunc {
+func GetMetricValue(storage storage.StorageIface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+		name := strings.ToLower(chi.URLParam(r, "name"))
 
-		//path := strings.TrimPrefix(r.URL.Path, "/update/")
-		parts := strings.Split(r.URL.Path, "/")
-
-		if len(parts) != 3 {
-			if len(parts) == 2 && parts[1] == "" {
-				http.Error(w, "Metric name is required", http.StatusNotFound)
+		metricType := chi.URLParam(r, "metric_type")
+		switch metricType {
+		case Gauge:
+			gauges := storage.GetGauges()
+			if val, ok := gauges[name]; ok {
+				w.Write([]byte(fmt.Sprintf("%f", val)))
+			} else {
+				http.Error(w, "Unknown metric", http.StatusNotFound)
 				return
 			}
-			http.Error(w, "Invalid request format", http.StatusBadRequest)
+		case Counter:
+			counter := storage.GetCounters()
+			if val, ok := counter[name]; ok {
+				w.Write([]byte(fmt.Sprintf("%d", val)))
+			} else {
+				http.Error(w, "Unknown metric", http.StatusNotFound)
+				return
+			}
+		default:
+			http.Error(w, "Unknown metric type", http.StatusBadRequest)
 			return
 		}
+		w.WriteHeader(http.StatusOK)
+	}
+}
 
-		metricType, name, value := parts[0], parts[1], parts[2]
+func UpdateHandler(storage storage.StorageIface) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		metricType := chi.URLParam(r, "metric_type")
+		name := chi.URLParam(r, "name")
+		value := chi.URLParam(r, "value")
 
 		switch metricType {
 		case Gauge:
@@ -41,14 +59,14 @@ func UpdateHandler(storage storage.StorageIface) http.HandlerFunc {
 				http.Error(w, "Invalid gauge value", http.StatusBadRequest)
 				return
 			}
-			storage.UpdateGauge(name, val)
+			storage.UpdateGauge(strings.ToLower(name), val)
 		case Counter:
 			val, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
 				http.Error(w, "Invalid counter value", http.StatusBadRequest)
 				return
 			}
-			storage.UpdateCounter(name, val)
+			storage.UpdateCounter(strings.ToLower(name), val)
 		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return
