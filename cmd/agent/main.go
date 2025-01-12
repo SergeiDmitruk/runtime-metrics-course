@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	address := flag.String("a", "localhost:8080", "server address ")
+	address := flag.String("a", "http://localhost:8080", "server address ")
 	pollInterval := flag.Int("p", 2, "poll interval")
 	reportInterval := flag.Int("r", 10, "report interval")
 
