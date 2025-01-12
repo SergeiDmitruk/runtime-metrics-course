@@ -104,7 +104,7 @@ func TestGetMetricValue(t *testing.T) {
 				})
 			},
 			expectedCode: http.StatusOK,
-			expectedBody: "25.500000",
+			expectedBody: "25.5",
 		},
 		{
 			name:   "Valid counter metric",
