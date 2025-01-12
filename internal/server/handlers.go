@@ -24,7 +24,7 @@ func GetMetricValueHandler(storage storage.StorageIface) http.HandlerFunc {
 		case Gauge:
 			gauges := storage.GetGauges()
 			if val, ok := gauges[name]; ok {
-				w.Write([]byte(fmt.Sprintf("%f", val)))
+				w.Write([]byte(strconv.FormatFloat(val, 'f', -1, 64)))
 			} else {
 				http.Error(w, "Unknown metric", http.StatusNotFound)
 				return
