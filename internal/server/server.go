@@ -8,7 +8,7 @@ import (
 	"github.com/runtime-metrics-course/internal/storage"
 )
 
-func InitSever() error {
+func InitSever(address string) error {
 
 	storage, err := storage.GetStorage()
 	if err != nil {
@@ -22,6 +22,6 @@ func InitSever() error {
 		r.Post("/{name}/{value}", UpdateHandler(storage))
 	})
 
-	log.Println("Server start")
-	return http.ListenAndServe(":8080", r)
+	log.Println("Server start on", address)
+	return http.ListenAndServe(address, r)
 }

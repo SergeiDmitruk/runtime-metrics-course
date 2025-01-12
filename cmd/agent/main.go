@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"time"
 
@@ -9,6 +10,11 @@ import (
 )
 
 func main() {
+	address := flag.String("a", "localhost:8080", "server address ")
+	pollInterval := flag.Int("p", 2, "poll interval")
+	reportInterval := flag.Int("r", 10, "report interval")
+
+	flag.Parse()
 	if err := storage.InitStorage(storage.RuntimeMemory); err != nil {
 		log.Fatal(err)
 	}
@@ -16,7 +22,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := agent.StartAgent(storage, "http://localhost:8080", 2*time.Second, 10*time.Second); err != nil {
+	if err := agent.StartAgent(storage, *address, time.Duration(*pollInterval)*time.Second, time.Duration(*reportInterval)*time.Second); err != nil {
 		log.Fatal(err)
 	}
 	log.Println("agent start")
