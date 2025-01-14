@@ -34,7 +34,10 @@ func (a *Address) Set(s string) error {
 	return nil
 }
 func main() {
-	addr := new(Address)
+	addr := &Address{
+		Host: "localhost",
+		Port: 8080,
+	}
 	_ = flag.Value(addr)
 	//address := flag.String("a", "http://localhost:8080", "server address ")
 	flag.Var(addr, "a", "Net address host:port")
@@ -52,6 +55,6 @@ func main() {
 	if err := agent.StartAgent(storage, addr.String(), time.Duration(*pollInterval)*time.Second, time.Duration(*reportInterval)*time.Second); err != nil {
 		log.Fatal(err)
 	}
-	log.Println("agent start")
+	log.Println("agent start on", addr.String())
 	select {}
 }
