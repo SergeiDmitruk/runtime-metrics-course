@@ -23,7 +23,7 @@ func (a Address) String() string {
 func (a *Address) Set(s string) error {
 	hp := strings.Split(s, ":")
 	if len(hp) != 2 {
-		return errors.New("Need address in a form host:port")
+		return errors.New("need address in a form host:port")
 	}
 	port, err := strconv.Atoi(hp[1])
 	if err != nil {
@@ -45,6 +45,9 @@ func main() {
 	reportInterval := flag.Int("r", 10, "report interval")
 
 	flag.Parse()
+	if !strings.Contains(addr.String(), "http") {
+		addr.Host = "http://" + addr.Host
+	}
 	if err := storage.InitStorage(storage.RuntimeMemory); err != nil {
 		log.Fatal(err)
 	}
