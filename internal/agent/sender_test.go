@@ -7,7 +7,7 @@ import (
 )
 
 func TestSendRequest(t *testing.T) {
-	// Создаем мок-сервер для имитации ответа
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST method, got %v", r.Method)
