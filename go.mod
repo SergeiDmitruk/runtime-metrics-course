@@ -3,6 +3,7 @@ module github.com/runtime-metrics-course
 go 1.18
 
 require (
+	github.com/caarlos0/env/v6 v6.10.1
 	github.com/go-chi/chi v1.5.5
 	github.com/stretchr/testify v1.10.0
 )
