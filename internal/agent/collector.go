@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"log"
 	"math/rand"
 	"runtime"
 
@@ -43,8 +42,4 @@ func CollectRuntimeMetrics(storage storage.StorageIface) {
 	storage.UpdateGauge("RandomValue", rand.Float64())
 
 	storage.UpdateCounter("PollCount", 1)
-	if counter, ok := storage.GetCounters()["PollCount"]; ok {
-		log.Println("Update", counter)
-	}
-
 }

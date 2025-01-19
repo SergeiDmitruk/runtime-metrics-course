@@ -8,10 +8,7 @@ import (
 )
 
 func StartAgent(storage storage.StorageIface, address string, pollInterval, reportInterval time.Duration) error {
-	//storage, err := storage.GetStorage()
-	//if err != nil {
-	//	return err
-	//}
+
 	pollTicker := time.NewTicker(pollInterval)
 	reportTicker := time.NewTicker(reportInterval)
 	go func() {

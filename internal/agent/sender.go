@@ -13,21 +13,18 @@ func SendMetrics(storage storage.StorageIface, serverAddress string) error {
 	log.Println("------Sending metrics------")
 
 	client := &http.Client{Timeout: 5 * time.Second}
-	gauges := storage.GetGauges()
-	counters := storage.GetCounters()
+	metrics := storage.GetMetrics()
 
-	for name, value := range gauges {
+	for name, value := range metrics.Gauges {
 		url := fmt.Sprintf("%s/update/gauge/%s/%f", serverAddress, name, value)
-		//log.Printf("Sending gauge: %s", url)
 		if err := sendRequest(client, url); err != nil {
 			log.Printf("Error sending gauge %s: %v", name, err)
 			return err
 		}
 	}
 
-	for name, value := range counters {
+	for name, value := range metrics.Counters {
 		url := fmt.Sprintf("%s/update/counter/%s/%d", serverAddress, name, value)
-		//log.Printf("Sending counter: %s", url)
 		if err := sendRequest(client, url); err != nil {
 			log.Printf("Error sending counter %s: %v", name, err)
 			return err

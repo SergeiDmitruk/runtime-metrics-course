@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/runtime-metrics-course/internal/storage"
+	"github.com/runtime-metrics-course/internal/templates"
 )
 
 const (
@@ -20,18 +21,17 @@ func GetMetricValueHandler(storage storage.StorageIface) http.HandlerFunc {
 		name := strings.ToLower(chi.URLParam(r, "name"))
 
 		metricType := chi.URLParam(r, "metric_type")
+		metrics := storage.GetMetrics()
 		switch metricType {
 		case Gauge:
-			gauges := storage.GetGauges()
-			if val, ok := gauges[name]; ok {
+			if val, ok := metrics.Gauges[name]; ok {
 				w.Write([]byte(strconv.FormatFloat(val, 'f', -1, 64)))
 			} else {
 				http.Error(w, "Unknown metric", http.StatusNotFound)
 				return
 			}
 		case Counter:
-			counter := storage.GetCounters()
-			if val, ok := counter[name]; ok {
+			if val, ok := metrics.Counters[name]; ok {
 				w.Write([]byte(fmt.Sprintf("%d", val)))
 			} else {
 				http.Error(w, "Unknown metric", http.StatusNotFound)
@@ -78,28 +78,16 @@ func UpdateHandler(storage storage.StorageIface) http.HandlerFunc {
 }
 func GetMetricsHandler(storage storage.StorageIface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		gauges := storage.GetGauges()
-		counters := storage.GetCounters()
+		tmpl, err := templates.GetMetricsTemplate()
+		if err != nil {
+			http.Error(w, "Failed to load template", http.StatusInternalServerError)
+			return
+		}
+		data := storage.GetMetrics()
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-
-		html := "<!DOCTYPE html><html><head><title>Metrics</title></head><body>"
-		html += "<h1>Metrics</h1>"
-		html += "<h2>Gauge Metrics</h2><ul>"
-		for name, value := range gauges {
-			html += fmt.Sprintf("<li>%s: %.2f</li>", name, value)
-		}
-		html += "</ul>"
-		html += "<h2>Counter Metrics</h2><ul>"
-		for name, value := range counters {
-			html += fmt.Sprintf("<li>%s: %d</li>", name, value)
-		}
-		html += "</ul>"
-		html += "</body></html>"
-		_, err := w.Write([]byte(html))
-		if err != nil {
-			http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		if err := tmpl.Execute(w, data); err != nil {
+			http.Error(w, "Failed to render template", http.StatusInternalServerError)
 		}
 	}
 }

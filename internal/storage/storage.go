@@ -3,22 +3,19 @@ package storage
 import (
 	"errors"
 	"fmt"
+
+	"github.com/runtime-metrics-course/internal/models"
 )
 
-const (
-	Gauge   = "gauge"
-	Counter = "counter"
-)
 const ( //list of possible db types
 	RuntimeMemory = "mem_storage"
 )
 
-//go:generate go run github.com/vektra/mockery/v2@v2.20.2 --name=StorageIface --output=../mocks --outpkg=mocks
+//go:generate go run github.com/vektra/mockery/v2@v2.20.2 --name=StorageIface --output=../mocks --outpkg=mocks --filename=storage_mock.go
 type StorageIface interface {
 	UpdateGauge(name string, value float64)
 	UpdateCounter(name string, value int64)
-	GetGauges() map[string]float64
-	GetCounters() map[string]int64
+	GetMetrics() models.Metrics
 	PrintMetrics()
 }
 

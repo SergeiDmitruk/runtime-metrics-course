@@ -1,11 +1,9 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,52 +14,32 @@ import (
 
 type Config struct {
 	Host           string
-	Port           int
 	PollInterval   int `env:"REPORT_INTERVAL"`
 	ReportInterval int `env:"POLL_INTERVAL"`
 }
 
-func (a Config) String() string {
-	return a.Host + ":" + strconv.Itoa(a.Port)
-}
-func (a *Config) Set(s string) error {
-	hp := strings.Split(s, ":")
-	if len(hp) != 2 {
-		return errors.New("need Config in a form host:port")
-	}
-	port, err := strconv.Atoi(hp[1])
-	if err != nil {
-		return err
-	}
-	a.Host = hp[0]
-	a.Port = port
-	return nil
-}
 func main() {
-	config := &Config{
-		Host: "localhost",
-		Port: 8080,
-	}
-	_ = flag.Value(config)
-	//Config := flag.String("a", "http://localhost:8080", "server Config ")
-	flag.Var(config, "a", "Net Config host:port")
-	config.PollInterval = *flag.Int("p", 2, "poll interval")
-	config.ReportInterval = *flag.Int("r", 10, "report interval")
+	hostFlag := flag.String("a", "http://localhost:8080", "server config host:port")
+	pollIntervalFlag := flag.Int("p", 2, "poll interval")
+	reportIntervalFlag := flag.Int("r", 10, "report interval")
 
 	flag.Parse()
 
+	config := &Config{
+		Host:           *hostFlag,
+		PollInterval:   *pollIntervalFlag,
+		ReportInterval: *reportIntervalFlag,
+	}
 	err := env.Parse(config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	if configEnv := os.Getenv("ADDRESS"); configEnv != "" {
-		if err := config.Set(configEnv); err != nil {
-			log.Fatal(err)
-		}
+		config.Host = configEnv
 	}
 
-	if !strings.Contains(config.String(), "http") {
+	if !strings.Contains(config.Host, "http") {
 		config.Host = "http://" + config.Host
 	}
 	if err := storage.InitStorage(storage.RuntimeMemory); err != nil {
@@ -71,9 +49,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := agent.StartAgent(storage, config.String(), time.Duration(config.PollInterval)*time.Second, time.Duration(config.ReportInterval)*time.Second); err != nil {
+	if err := agent.StartAgent(storage, config.Host, time.Duration(config.PollInterval)*time.Second, time.Duration(config.ReportInterval)*time.Second); err != nil {
 		log.Fatal(err)
 	}
-	log.Println("agent start on", config.String())
+	log.Println("agent start send to", config.Host)
 	select {}
 }

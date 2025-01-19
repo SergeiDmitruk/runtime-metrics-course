@@ -3,18 +3,20 @@ package storage
 import (
 	"fmt"
 	"sync"
+
+	"github.com/runtime-metrics-course/internal/models"
 )
 
 type MemStorage struct {
 	mu       sync.Mutex
-	gauges   map[string]float64
-	counters map[string]int64
+	gauges   models.Gauges
+	counters models.Counters
 }
 
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
-		gauges:   make(map[string]float64),
-		counters: make(map[string]int64),
+		gauges:   make(models.Gauges),
+		counters: make(models.Counters),
 	}
 }
 
@@ -30,23 +32,20 @@ func (m *MemStorage) UpdateCounter(name string, value int64) {
 	m.counters[name] += value
 }
 
-func (m *MemStorage) GetGauges() map[string]float64 {
+func (m *MemStorage) GetMetrics() models.Metrics {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	copyGauges := make(map[string]float64, len(m.gauges))
+
+	copyGauges := make(models.Gauges, len(m.gauges))
 	for k, v := range m.gauges {
 		copyGauges[k] = v
 	}
-	return copyGauges
-}
-func (m *MemStorage) GetCounters() map[string]int64 {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	copyGauges := make(map[string]int64, len(m.counters))
+	copyCounters := make(models.Counters, len(m.counters))
 	for k, v := range m.counters {
-		copyGauges[k] = v
+		copyCounters[k] = v
 	}
-	return copyGauges
+
+	return models.Metrics{Gauges: copyGauges, Counters: copyCounters}
 }
 
 func (m *MemStorage) PrintMetrics() { // test stdout
