@@ -71,8 +71,6 @@ func UpdateHandler(storage storage.StorageIface) http.HandlerFunc {
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return
 		}
-		storage.PrintMetrics()
-
 		w.WriteHeader(http.StatusOK)
 	}
 }

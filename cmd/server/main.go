@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/runtime-metrics-course/internal/logger"
 	"github.com/runtime-metrics-course/internal/server"
 	"github.com/runtime-metrics-course/internal/storage"
 )
@@ -15,6 +16,9 @@ func main() {
 		address = &addr
 	}
 	flag.Parse()
+	if err := logger.Init("info"); err != nil {
+		log.Fatal(err)
+	}
 	if err := storage.InitStorage(storage.RuntimeMemory); err != nil {
 		log.Fatal(err)
 	}
