@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi"
+	"github.com/runtime-metrics-course/internal/logger"
 	"github.com/runtime-metrics-course/internal/storage"
 )
 
@@ -15,11 +16,11 @@ func InitSever(address string) error {
 		return err
 	}
 	r := chi.NewRouter()
-	r.Get("/", GetMetricsHandler(storage))
-	r.Get("/value/{metric_type}/{name}", GetMetricValueHandler(storage))
+	r.Get("/", logger.LoggerMdlwr(GetMetricsHandler(storage)))
+	r.Get("/value/{metric_type}/{name}", logger.LoggerMdlwr(GetMetricValueHandler(storage)))
 	r.Route("/update/{metric_type}/", func(r chi.Router) {
 		r.Post("/", http.NotFound)
-		r.Post("/{name}/{value}", UpdateHandler(storage))
+		r.Post("/{name}/{value}", logger.LoggerMdlwr(UpdateHandler(storage)))
 	})
 
 	log.Println("Server start on", address)

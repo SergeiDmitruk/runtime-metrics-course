@@ -24,7 +24,6 @@ func TestUpdateHandler(t *testing.T) {
 			method: http.MethodPost,
 			setupMock: func(storage *mocks.StorageIface) {
 				storage.On("UpdateCounter", "requests", int64(10)).Return(nil)
-				storage.On("PrintMetrics").Return(nil)
 			},
 			expectedCode: http.StatusOK,
 		},

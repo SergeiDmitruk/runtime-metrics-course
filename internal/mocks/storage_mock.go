@@ -26,11 +26,6 @@ func (_m *StorageIface) GetMetrics() models.Metrics {
 	return r0
 }
 
-// PrintMetrics provides a mock function with given fields:
-func (_m *StorageIface) PrintMetrics() {
-	_m.Called()
-}
-
 // UpdateCounter provides a mock function with given fields: name, value
 func (_m *StorageIface) UpdateCounter(name string, value int64) {
 	_m.Called(name, value)
