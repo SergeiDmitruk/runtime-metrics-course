@@ -35,7 +35,7 @@ func SendMetrics(storage storage.StorageIface, serverAddress string) error {
 	return nil
 }
 
-func SendMetricsJson(storage storage.StorageIface, serverAddress string) error {
+func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 	client := &http.Client{Timeout: 5 * time.Second}
 	metrics := storage.GetMetrics()
 

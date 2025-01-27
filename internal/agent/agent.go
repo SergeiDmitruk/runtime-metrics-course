@@ -20,7 +20,7 @@ func StartAgent(storage storage.StorageIface, address string, pollInterval, repo
 		for range reportTicker.C {
 			log.Println("------Sending metrics------")
 			SendMetrics(storage, address)
-			SendMetricsJson(storage, address)
+			SendMetricsJSON(storage, address)
 			log.Println("------Metrics sent successfully------")
 		}
 

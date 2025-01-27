@@ -18,11 +18,11 @@ func InitSever(address string) error {
 	r := chi.NewRouter()
 	r.Get("/", logger.LoggerMdlwr(GetMetricsHandler(storage)))
 	r.Route("/value/", func(r chi.Router) {
-		r.Post("/", logger.LoggerMdlwr(GetMetricValueJsonHandler(storage)))
+		r.Post("/", logger.LoggerMdlwr(GetMetricValueJSONHandler(storage)))
 		r.Get("/{metric_type}/{name}", logger.LoggerMdlwr(GetMetricValueHandler(storage)))
 	})
 	r.Route("/update/", func(r chi.Router) {
-		r.Post("/", logger.LoggerMdlwr(UpdateJsonHandler(storage)))
+		r.Post("/", logger.LoggerMdlwr(UpdateJSONHandler(storage)))
 		r.Post("/{metric_type}/{name}/{value}", logger.LoggerMdlwr(UpdateHandler(storage)))
 	})
 

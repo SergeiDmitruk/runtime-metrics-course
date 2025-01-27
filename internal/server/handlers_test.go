@@ -1,6 +1,9 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -8,6 +11,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/runtime-metrics-course/internal/mocks"
 	"github.com/runtime-metrics-course/internal/models"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateHandler(t *testing.T) {
@@ -183,6 +187,76 @@ func TestGetMetricValue(t *testing.T) {
 
 			if body := w.Body.String(); body != tt.expectedBody {
 				t.Errorf("expected body %q, got %q", tt.expectedBody, body)
+			}
+
+			storage.AssertExpectations(t)
+		})
+	}
+}
+
+func TestGetMetricValueJSONHandler(t *testing.T) {
+	testValue := 25.5
+	tests := []struct {
+		name         string
+		url          string
+		method       string
+		body         models.MetricJSON
+		setupMock    func(storage *mocks.StorageIface)
+		expectedCode int
+		expectedBody models.MetricJSON
+	}{
+		{
+			name:   "Valid gauge metric",
+			url:    "/value/",
+			method: http.MethodPost,
+			body: models.MetricJSON{
+				ID:    "temperature",
+				MType: models.Gauge,
+			},
+			setupMock: func(storage *mocks.StorageIface) {
+				storage.On("GetMetrics").Return(models.Metrics{
+					Gauges: models.Gauges{
+						"temperature": 25.5,
+					},
+				})
+			},
+			expectedCode: http.StatusOK,
+			expectedBody: models.MetricJSON{
+				ID:    "temperature",
+				MType: models.Gauge,
+				Value: &testValue,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			storage := mocks.NewStorageIface(t)
+			tt.setupMock(storage)
+
+			r := chi.NewRouter()
+
+			r.Post("/value/", GetMetricValueJSONHandler(storage))
+			testBody, _ := json.Marshal(tt.body)
+			req := httptest.NewRequest(tt.method, tt.url, bytes.NewBuffer(testBody))
+			w := httptest.NewRecorder()
+
+			r.ServeHTTP(w, req)
+
+			if status := w.Code; status != tt.expectedCode {
+				t.Errorf("expected status %v, got %v", tt.expectedCode, status)
+			}
+			var respStruct models.MetricJSON
+			respBody, err := io.ReadAll(w.Body)
+			if err != nil {
+				t.Error(err)
+			}
+
+			if err = json.Unmarshal(respBody, &respStruct); err != nil {
+				t.Error(err)
+			}
+			if !assert.Equal(t, tt.expectedBody, respStruct) {
+				t.Error(*tt.expectedBody.Value, *respStruct.Value)
 			}
 
 			storage.AssertExpectations(t)

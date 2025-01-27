@@ -63,7 +63,7 @@ func GetMetricValueHandler(storage storage.StorageIface) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 	}
 }
-func GetMetricValueJsonHandler(storage storage.StorageIface) http.HandlerFunc {
+func GetMetricValueJSONHandler(storage storage.StorageIface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metric := &models.MetricJSON{}
 		data, err := ioutil.ReadAll(r.Body)
@@ -75,17 +75,18 @@ func GetMetricValueJsonHandler(storage storage.StorageIface) http.HandlerFunc {
 			http.Error(w, "Invalid JSON", http.StatusBadRequest)
 			return
 		}
+		metricName := strings.ToLower(metric.ID)
 		storageMetrics := storage.GetMetrics()
 		switch metric.MType {
 		case Gauge:
-			if val, ok := storageMetrics.Gauges[metric.ID]; ok {
+			if val, ok := storageMetrics.Gauges[metricName]; ok {
 				metric.Value = &val
 			} else {
 				http.Error(w, "Unknown metric", http.StatusNotFound)
 				return
 			}
 		case Counter:
-			if val, ok := storageMetrics.Counters[metric.ID]; ok {
+			if val, ok := storageMetrics.Counters[metricName]; ok {
 				metric.Delta = &val
 			} else {
 				http.Error(w, "Unknown metric", http.StatusNotFound)
@@ -135,7 +136,7 @@ func UpdateHandler(storage storage.StorageIface) http.HandlerFunc {
 	}
 }
 
-func UpdateJsonHandler(storage storage.StorageIface) http.HandlerFunc {
+func UpdateJSONHandler(storage storage.StorageIface) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metric := &models.MetricJSON{}
 		data, err := ioutil.ReadAll(r.Body)
