@@ -17,10 +17,13 @@ func InitSever(address string) error {
 	}
 	r := chi.NewRouter()
 	r.Get("/", logger.LoggerMdlwr(GetMetricsHandler(storage)))
-	r.Get("/value/{metric_type}/{name}", logger.LoggerMdlwr(GetMetricValueHandler(storage)))
-	r.Route("/update/{metric_type}/", func(r chi.Router) {
-		r.Post("/", http.NotFound)
-		r.Post("/{name}/{value}", logger.LoggerMdlwr(UpdateHandler(storage)))
+	r.Route("/value/", func(r chi.Router) {
+		r.Post("/", logger.LoggerMdlwr(GetMetricValueJsonHandler(storage)))
+		r.Get("/{metric_type}/{name}", logger.LoggerMdlwr(GetMetricValueHandler(storage)))
+	})
+	r.Route("/update/", func(r chi.Router) {
+		r.Post("/", logger.LoggerMdlwr(UpdateJsonHandler(storage)))
+		r.Post("/{metric_type}/{name}/{value}", logger.LoggerMdlwr(UpdateHandler(storage)))
 	})
 
 	log.Println("Server start on", address)
