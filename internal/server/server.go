@@ -18,15 +18,18 @@ func InitSever(address string) error {
 	}
 
 	r := chi.NewRouter()
+	r.Use(logger.LoggerMdlwr)
+	r.Use(middleware.CompressMdlwr)
+	mh := GetNewMetricsHandler(storage)
 	//r.Use(logger.LoggerMdlwr())
-	r.Get("/", logger.LoggerMdlwr(middleware.CompressMdlwr(GetMetricsHandler(storage))))
+	r.Get("/", mh.GetMetrics)
 	r.Route("/value/", func(r chi.Router) {
-		r.Post("/", logger.LoggerMdlwr(middleware.CompressMdlwr(GetMetricValueJSONHandler(storage))))
-		r.Get("/{metric_type}/{name}", logger.LoggerMdlwr(middleware.CompressMdlwr(GetMetricValueHandler(storage))))
+		r.Post("/", mh.GetMetricValueJSON)
+		r.Get("/{metric_type}/{name}", mh.GetMetricValue)
 	})
 	r.Route("/update/", func(r chi.Router) {
-		r.Post("/", logger.LoggerMdlwr(middleware.CompressMdlwr(UpdateJSONHandler(storage))))
-		r.Post("/{metric_type}/{name}/{value}", logger.LoggerMdlwr(middleware.CompressMdlwr(UpdateHandler(storage))))
+		r.Post("/", mh.UpdateJSON)
+		r.Post("/{metric_type}/{name}/{value}", mh.Update)
 	})
 
 	log.Println("Server start on", address)

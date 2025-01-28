@@ -43,10 +43,9 @@ func Init(level string) error {
 	return nil
 }
 
-func LoggerMdlwr(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func LoggerMdlwr(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-
 		lw := loggerResponseWriter{
 			ResponseWriter: w,
 			respData:       &respData{},
@@ -60,5 +59,5 @@ func LoggerMdlwr(next http.HandlerFunc) http.HandlerFunc {
 			"size", lw.respData.size,
 			"duration", time.Since(start),
 		)
-	}
+	})
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/runtime-metrics-course/internal/mocks"
 	"github.com/runtime-metrics-course/internal/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpdateHandler(t *testing.T) {
@@ -72,8 +73,9 @@ func TestUpdateHandler(t *testing.T) {
 			tt.setupMock(storage)
 
 			r := chi.NewRouter()
+			h := GetNewMetricsHandler(storage)
 			r.Route("/update", func(r chi.Router) {
-				r.Post("/{metric_type}/{name}/{value}", UpdateHandler(storage))
+				r.Post("/{metric_type}/{name}/{value}", h.Update)
 			})
 
 			req := httptest.NewRequest(tt.method, tt.url, nil)
@@ -172,8 +174,9 @@ func TestGetMetricValue(t *testing.T) {
 			tt.setupMock(storage)
 
 			r := chi.NewRouter()
+			h := GetNewMetricsHandler(storage)
 			r.Route("/value", func(r chi.Router) {
-				r.Get("/{metric_type}/{name}", GetMetricValueHandler(storage))
+				r.Get("/{metric_type}/{name}", h.GetMetricValue)
 			})
 
 			req := httptest.NewRequest(tt.method, tt.url, nil)
@@ -235,9 +238,10 @@ func TestGetMetricValueJSONHandler(t *testing.T) {
 			tt.setupMock(storage)
 
 			r := chi.NewRouter()
-
-			r.Post("/value/", GetMetricValueJSONHandler(storage))
-			testBody, _ := json.Marshal(tt.body)
+			h := GetNewMetricsHandler(storage)
+			r.Post("/value/", h.GetMetricValueJSON)
+			testBody, err := json.Marshal(tt.body)
+			require.NoError(t, err)
 			req := httptest.NewRequest(tt.method, tt.url, bytes.NewBuffer(testBody))
 			w := httptest.NewRecorder()
 
