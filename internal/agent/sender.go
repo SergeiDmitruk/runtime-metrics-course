@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/runtime-metrics-course/internal/compress"
 	"github.com/runtime-metrics-course/internal/models"
 	"github.com/runtime-metrics-course/internal/storage"
 )
@@ -83,21 +85,36 @@ func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 }
 
 func sendRequest(client *http.Client, url string, body []byte) error {
+	cbody, err := compress.CompressGzip(body)
+	if err != nil {
+		return fmt.Errorf("failed to compress request: %w", err)
+	}
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(cbody))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
-
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+
+		req.Header.Set("Content-Encoding", "gzip")
 	} else {
 		req.Header.Set("Content-Type", "text/plain")
 	}
+	req.Header.Set("Accept-Encoding", "gzip")
 
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
+	}
+
+	encoding := resp.Header.Get("Content-Encoding")
+	if strings.Contains(encoding, "gzip") {
+		cdata, err := compress.DecompressGzip(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to decompressed request: %w", err)
+		}
+		log.Println("RESP decoded", string(cdata))
 	}
 	defer resp.Body.Close()
 	return nil

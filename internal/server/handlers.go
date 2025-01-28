@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,7 +32,10 @@ func GetMetricsHandler(storage storage.StorageIface) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := tmpl.Execute(w, data); err != nil {
 			http.Error(w, "Failed to render template", http.StatusInternalServerError)
+			return
 		}
+		w.WriteHeader(http.StatusOK)
+		log.Println(w.Header())
 	}
 }
 

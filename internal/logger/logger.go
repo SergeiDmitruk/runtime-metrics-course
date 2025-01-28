@@ -43,7 +43,7 @@ func Init(level string) error {
 	return nil
 }
 
-func LoggerMdlwr(h http.HandlerFunc) http.HandlerFunc {
+func LoggerMdlwr(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -51,7 +51,7 @@ func LoggerMdlwr(h http.HandlerFunc) http.HandlerFunc {
 			ResponseWriter: w,
 			respData:       &respData{},
 		}
-		h.ServeHTTP(&lw, r)
+		next.ServeHTTP(&lw, r)
 
 		Log.Sugar().Infoln(
 			"uri", r.RequestURI,
