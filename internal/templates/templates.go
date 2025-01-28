@@ -11,14 +11,18 @@ const MetricsHTML = `
 </head>
 <body>
     <h1>Metrics</h1>
-    {{range $type, $values := .}}
-        <h2>{{$type}}</h2>
+        <h2>Gauges</h2>
         <ul>
-            {{range $name, $value := $values}}
+            {{range $name, $value := .Gauges}}
                 <li>{{$name}}: {{$value}}</li>
             {{end}}
         </ul>
-    {{end}}
+        <h2>Counters</h2>
+        <ul>
+            {{range $name, $value := .Counters}}
+                <li>{{$name}}: {{$value}}</li>
+            {{end}}
+        </ul>
 </body>
 </html>
 `

@@ -16,7 +16,6 @@ type StorageIface interface {
 	UpdateGauge(name string, value float64)
 	UpdateCounter(name string, value int64)
 	GetMetrics() models.Metrics
-	PrintMetrics()
 }
 
 var currentStorage StorageIface
