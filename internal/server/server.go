@@ -16,7 +16,9 @@ func InitSever(address string) error {
 	if err != nil {
 		return err
 	}
+
 	r := chi.NewRouter()
+	//r.Use(logger.LoggerMdlwr())
 	r.Get("/", logger.LoggerMdlwr(middleware.CompressMdlwr(GetMetricsHandler(storage))))
 	r.Route("/value/", func(r chi.Router) {
 		r.Post("/", logger.LoggerMdlwr(middleware.CompressMdlwr(GetMetricValueJSONHandler(storage))))

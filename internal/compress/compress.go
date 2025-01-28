@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 )
 
 var cwInstance compressedWriter
@@ -25,11 +24,8 @@ func NewCompressedWriter(w http.ResponseWriter) *compressedWriter {
 }
 
 func (c *compressedWriter) Write(data []byte) (int, error) {
-	ct := c.w.Header().Get("Content-type")
-	if strings.Contains(ct, "text/html") || strings.Contains(ct, "application/json") {
-		return c.gw.Write(data)
-	}
-	return c.w.Write(data)
+	return c.gw.Write(data)
+
 }
 func (c *compressedWriter) Header() http.Header {
 	return c.w.Header()
@@ -39,8 +35,7 @@ func (c *compressedWriter) Close() error {
 }
 
 func (c *compressedWriter) WriteHeader(statusCode int) {
-	ct := c.w.Header().Get("Content-type")
-	if statusCode < 300 && (strings.Contains(ct, "text/html") || strings.Contains(ct, "application/json")) {
+	if statusCode < 300 {
 		c.w.Header().Set("Content-Encoding", "gzip")
 	}
 	c.w.WriteHeader(statusCode)
