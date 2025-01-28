@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -42,7 +41,6 @@ func (h *MetricsHadler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	log.Println(w.Header())
 }
 
 func (h *MetricsHadler) GetMetricValue(w http.ResponseWriter, r *http.Request) {

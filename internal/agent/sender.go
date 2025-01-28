@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/runtime-metrics-course/internal/compress"
@@ -108,14 +107,6 @@ func sendRequest(client *http.Client, url string, body []byte) error {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
 
-	encoding := resp.Header.Get("Content-Encoding")
-	if strings.Contains(encoding, "gzip") {
-		cdata, err := compress.DecompressGzip(resp.Body)
-		if err != nil {
-			return fmt.Errorf("failed to decompressed request: %w", err)
-		}
-		log.Println("RESP decoded", string(cdata))
-	}
 	defer resp.Body.Close()
 	return nil
 }
