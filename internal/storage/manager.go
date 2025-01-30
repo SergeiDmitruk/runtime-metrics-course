@@ -4,7 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"time"
+)
+
+const ( //list of possible storage types
+	RuntimeMemory = "mem_storage"
 )
 
 type StorageManager struct {
@@ -19,19 +22,22 @@ func GetStorageManager() *StorageManager {
 	return &currentSM
 }
 
-func NewStorageManager(storageType string, interval time.Duration, filePath string, restore bool) (*StorageManager, error) {
+func NewStorageManager(storageType string, workerCfg *WorkerCfg) (*StorageManager, error) {
 
 	var err error
 	switch storageType {
 	case RuntimeMemory:
-		currentSM.storage = NewMemStorage()
+		currentSM.storage = newMemStorage()
+
 	default:
 		return &currentSM, fmt.Errorf("unknown storge type - %s", storageType)
 	}
 
 	currentSM.storageType = storageType
 
-	currentSM.StorageWorker = NewStorageWorker(interval, filePath, restore, currentSM.storage)
+	if workerCfg != nil {
+		currentSM.StorageWorker = newStorageWorker(workerCfg, currentSM.storage)
+	}
 
 	return &currentSM, err
 }

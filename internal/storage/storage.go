@@ -6,6 +6,7 @@ import (
 
 const ( //list of possible db types
 	RuntimeMemory = "mem_storage"
+	MockStorage   = "mock_storage"
 )
 
 //go:generate go run github.com/vektra/mockery/v2@v2.20.2 --name=StorageIface --output=../mocks --outpkg=mocks --filename=storage_mock.go

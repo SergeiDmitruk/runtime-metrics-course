@@ -34,8 +34,12 @@ func main() {
 	if env, ok := os.LookupEnv("RESTORE"); ok {
 		fmt.Sscanf(env, "%t", restore)
 	}
-
-	sm, err := storage.NewStorageManager(storage.RuntimeMemory, time.Duration(*storeInterval)*time.Second, *filePath, *restore)
+	workercfg := storage.WorkerCfg{
+		Interval: time.Duration(*storeInterval) * time.Second,
+		FilePath: *filePath,
+		Restore:  *restore,
+	}
+	sm, err := storage.NewStorageManager(storage.RuntimeMemory, &workercfg)
 	if err != nil {
 		log.Fatal(err)
 	}
