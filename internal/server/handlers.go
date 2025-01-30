@@ -28,11 +28,8 @@ func GetNewMetricsHandler(storage storage.StorageIface) *MetricsHadler {
 }
 
 func (h *MetricsHadler) GetMetrics(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := templates.GetMetricsTemplate()
-	if err != nil {
-		http.Error(w, "Failed to load template", http.StatusInternalServerError)
-		return
-	}
+	tmpl := templates.GetMetricsTemplate()
+
 	data := h.storage.GetMetrics()
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

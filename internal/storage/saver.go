@@ -24,7 +24,7 @@ type StorageWorker struct {
 	stopChannel chan struct{}
 }
 
-func newStorageWorker(cfg *WorkerCfg, storage StorageIface) *StorageWorker {
+func NewStorageWorker(cfg *WorkerCfg, storage StorageIface) *StorageWorker {
 	return &StorageWorker{
 		interval:    cfg.Interval,
 		filePath:    cfg.FilePath,

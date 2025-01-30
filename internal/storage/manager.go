@@ -27,7 +27,7 @@ func NewStorageManager(storageType string, workerCfg *WorkerCfg) (*StorageManage
 	var err error
 	switch storageType {
 	case RuntimeMemory:
-		currentSM.storage = newMemStorage()
+		currentSM.storage = NewMemStorage()
 
 	default:
 		return &currentSM, fmt.Errorf("unknown storge type - %s", storageType)
@@ -36,7 +36,7 @@ func NewStorageManager(storageType string, workerCfg *WorkerCfg) (*StorageManage
 	currentSM.storageType = storageType
 
 	if workerCfg != nil {
-		currentSM.StorageWorker = newStorageWorker(workerCfg, currentSM.storage)
+		currentSM.StorageWorker = NewStorageWorker(workerCfg, currentSM.storage)
 	}
 
 	return &currentSM, err

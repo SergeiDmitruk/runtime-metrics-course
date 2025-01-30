@@ -1,8 +1,10 @@
 package templates
 
-import "html/template"
+import (
+	"html/template"
+	"sync"
+)
 
-// HTML шаблон для метрик
 const MetricsHTML = `
 <!DOCTYPE html>
 <html>
@@ -27,6 +29,12 @@ const MetricsHTML = `
 </html>
 `
 
-func GetMetricsTemplate() (*template.Template, error) {
-	return template.New("metrics").Parse(MetricsHTML)
+var once sync.Once
+var metricsTemplate *template.Template
+
+func GetMetricsTemplate() *template.Template {
+	once.Do(func() {
+		metricsTemplate = template.Must(template.New("metrics").Parse(MetricsHTML))
+	})
+	return metricsTemplate
 }

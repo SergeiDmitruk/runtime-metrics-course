@@ -12,7 +12,7 @@ type MemStorage struct {
 	counters models.Counters
 }
 
-func newMemStorage() *MemStorage {
+func NewMemStorage() *MemStorage {
 	return &MemStorage{
 		gauges:   make(models.Gauges),
 		counters: make(models.Counters),
