@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/runtime-metrics-course/internal/compress"
 	"github.com/runtime-metrics-course/internal/models"
 	"github.com/runtime-metrics-course/internal/storage"
+	"github.com/runtime-metrics-course/internal/utils"
 )
 
 func SendMetrics(storage storage.StorageIface, serverAddress string) error {
@@ -84,7 +84,7 @@ func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 }
 
 func sendRequest(client *http.Client, url string, body []byte) error {
-	cbody, err := compress.CompressGzip(body)
+	cbody, err := utils.CompressGzip(body)
 	if err != nil {
 		return fmt.Errorf("failed to compress request: %w", err)
 	}

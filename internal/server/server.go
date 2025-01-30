@@ -12,7 +12,7 @@ import (
 
 func InitSever(address string) error {
 
-	storage, err := storage.GetStorage()
+	storage, err := storage.GetStorageManager().GetStorage()
 	if err != nil {
 		return err
 	}
@@ -21,7 +21,6 @@ func InitSever(address string) error {
 	r.Use(logger.LoggerMdlwr)
 	r.Use(middleware.CompressMdlwr)
 	mh := GetNewMetricsHandler(storage)
-	//r.Use(logger.LoggerMdlwr())
 	r.Get("/", mh.GetMetrics)
 	r.Route("/value/", func(r chi.Router) {
 		r.Post("/", mh.GetMetricValueJSON)

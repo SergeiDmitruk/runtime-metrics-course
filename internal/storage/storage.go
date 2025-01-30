@@ -1,9 +1,6 @@
 package storage
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/runtime-metrics-course/internal/models"
 )
 
@@ -18,21 +15,21 @@ type StorageIface interface {
 	GetMetrics() models.Metrics
 }
 
-var currentStorage StorageIface
+// var currentStorage StorageIface
 
-func InitStorage(storageType string) error {
-	switch storageType {
-	case RuntimeMemory:
-		currentStorage = NewMemStorage()
-		return nil
-	default:
-		return fmt.Errorf("unknown storge type - %s", storageType)
-	}
-}
+// func InitStorage(storageType string) error {
+// 	switch storageType {
+// 	case RuntimeMemory:
+// 		currentStorage = NewMemStorage()
+// 		return nil
+// 	default:
+// 		return fmt.Errorf("unknown storge type - %s", storageType)
+// 	}
+// }
 
-func GetStorage() (StorageIface, error) {
-	if currentStorage == nil {
-		return nil, errors.New("storage is not initialized")
-	}
-	return currentStorage, nil
-}
+// func GetStorage() (StorageIface, error) {
+// 	if currentStorage == nil {
+// 		return nil, errors.New("storage is not initialized")
+// 	}
+// 	return currentStorage, nil
+// }
