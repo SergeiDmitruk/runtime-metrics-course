@@ -1,14 +1,23 @@
 package storage
 
 import (
+	"database/sql"
 	"errors"
-	"fmt"
 	"log"
+	"time"
 )
 
 const ( //list of possible storage types
 	RuntimeMemory = "mem_storage"
+	PostgresDB    = "pgx_storage"
 )
+
+type Cfg struct {
+	Interval time.Duration
+	FilePath string
+	Restore  bool
+	Conn     *sql.DB
+}
 
 type StorageManager struct {
 	*StorageWorker
@@ -22,21 +31,21 @@ func GetStorageManager() *StorageManager {
 	return &currentSM
 }
 
-func NewStorageManager(storageType string, workerCfg *WorkerCfg) (*StorageManager, error) {
+func NewStorageManager(cfg *Cfg) (*StorageManager, error) {
 
 	var err error
-	switch storageType {
-	case RuntimeMemory:
-		currentSM.storage = NewMemStorage()
+	switch {
+	case cfg.Conn != nil:
+		currentSM.storage = NewPgxStorage(cfg.Conn)
+		currentSM.storageType = PostgresDB
 
 	default:
-		return &currentSM, fmt.Errorf("unknown storge type - %s", storageType)
+		currentSM.storage = NewMemStorage()
+		currentSM.storageType = RuntimeMemory
 	}
 
-	currentSM.storageType = storageType
-
-	if workerCfg != nil {
-		currentSM.StorageWorker = NewStorageWorker(workerCfg, currentSM.storage)
+	if cfg != nil {
+		currentSM.StorageWorker = NewStorageWorker(cfg, currentSM.storage)
 	}
 
 	return &currentSM, err

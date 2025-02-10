@@ -11,11 +11,6 @@ import (
 	"github.com/runtime-metrics-course/internal/utils"
 )
 
-type WorkerCfg struct {
-	Interval time.Duration
-	FilePath string
-	Restore  bool
-}
 type StorageWorker struct {
 	interval    time.Duration
 	filePath    string
@@ -24,7 +19,7 @@ type StorageWorker struct {
 	stopChannel chan struct{}
 }
 
-func NewStorageWorker(cfg *WorkerCfg, storage StorageIface) *StorageWorker {
+func NewStorageWorker(cfg *Cfg, storage StorageIface) *StorageWorker {
 	return &StorageWorker{
 		interval:    cfg.Interval,
 		filePath:    cfg.FilePath,
