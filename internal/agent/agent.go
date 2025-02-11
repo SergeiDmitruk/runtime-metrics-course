@@ -19,8 +19,10 @@ func StartAgent(storage storage.StorageIface, address string, pollInterval, repo
 	go func() {
 		for range reportTicker.C {
 			log.Println("------Sending metrics------")
-			SendMetrics(storage, address)
-			SendMetricsJSON(storage, address)
+			//SendMetrics(storage, address)
+			//SendMetricsJSON(storage, address)
+			SendAll(storage, address)
+
 			log.Println("------Metrics sent successfully------")
 		}
 

@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/runtime-metrics-course/internal/models"
@@ -53,4 +54,22 @@ func (m *MemStorage) GetMetrics(ctx context.Context) (models.Metrics, error) {
 
 func (m *MemStorage) Ping() error {
 	return errors.New("db is not initialized")
+}
+
+func (m *MemStorage) UpdateAll(ctx context.Context, metrics []models.MetricJSON) error {
+	var errs []error
+	for _, metric := range metrics {
+
+		switch {
+		case metric.IsCounter() && metric.Delta != nil:
+			m.UpdateCounter(ctx, metric.ID, *metric.Delta)
+		case metric.IsGauge() && metric.Value != nil:
+			m.UpdateGauge(ctx, metric.ID, *metric.Value)
+		default:
+
+			errs = append(errs, fmt.Errorf("%s: invalid metric type or value", metric.ID))
+		}
+
+	}
+	return errors.Join(errs...)
 }

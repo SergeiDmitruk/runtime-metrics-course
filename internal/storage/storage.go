@@ -11,5 +11,6 @@ type StorageIface interface {
 	UpdateGauge(ctx context.Context, name string, value float64) error
 	UpdateCounter(ctx context.Context, name string, value int64) error
 	GetMetrics(ctx context.Context) (models.Metrics, error)
+	UpdateAll(ctx context.Context, metrics []models.MetricJSON) error
 	Ping() error
 }

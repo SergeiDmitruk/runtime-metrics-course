@@ -3,11 +3,14 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/runtime-metrics-course/internal/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpdateGaugeDB(t *testing.T) {
@@ -108,11 +111,11 @@ func TestPgxStorage_InitCache(t *testing.T) {
 
 	ctx := context.Background()
 
-	rows := sqlmock.NewRows([]string{"id", "type", "value", "delta"}).
+	rows := sqlmock.NewRows([]string{"name", "type", "value", "delta"}).
 		AddRow("metric1", "gauge", 123.45, nil).
 		AddRow("metric2", "counter", nil, 10)
 
-	mock.ExpectQuery("SELECT id, type, value, delta from metrics").
+	mock.ExpectQuery("SELECT name, type, value, delta from metrics").
 		WillReturnRows(rows)
 
 	err = s.InitCache(ctx)
@@ -128,3 +131,126 @@ func TestPgxStorage_InitCache(t *testing.T) {
 
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestPgxStorage_UpdateAll(t *testing.T) {
+	t.Run("successful update", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
+
+		pgStorage := NewPgxStorage(db)
+		ctx := context.Background()
+		now := time.Now().Format(time.RFC3339)
+
+		metrics := []models.MetricJSON{
+			{ID: "requests", MType: "counter", Delta: int64Ptr(42)},
+			{ID: "temperature", MType: "gauge", Value: float64Ptr(25.5)},
+		}
+
+		mock.ExpectBegin()
+		mock.ExpectPrepare("INSERT INTO metrics .* DO UPDATE SET delta")
+		mock.ExpectPrepare("INSERT INTO metrics .* DO UPDATE SET value")
+
+		mock.ExpectExec("INSERT INTO metrics .* DO UPDATE SET delta").
+			WithArgs("requests", "counter", *metrics[0].Delta, now).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		mock.ExpectExec("INSERT INTO metrics .* DO UPDATE SET value").
+			WithArgs("temperature", "gauge", *metrics[1].Value, now).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		mock.ExpectCommit()
+
+		err = pgStorage.UpdateAll(ctx, metrics)
+		assert.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("transaction begin error", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
+
+		pgStorage := NewPgxStorage(db)
+		ctx := context.Background()
+
+		mock.ExpectBegin().WillReturnError(errors.New("begin error"))
+
+		err = pgStorage.UpdateAll(ctx, nil)
+		assert.ErrorContains(t, err, "begin error")
+	})
+
+	t.Run("prepare statement error", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
+
+		pgStorage := NewPgxStorage(db)
+		ctx := context.Background()
+
+		mock.ExpectBegin()
+		mock.ExpectPrepare("INSERT INTO metrics .* DO UPDATE SET delta").
+			WillReturnError(errors.New("prepare error"))
+
+		err = pgStorage.UpdateAll(ctx, nil)
+		assert.ErrorContains(t, err, "prepare error")
+	})
+
+	t.Run("exec error", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
+
+		pgStorage := NewPgxStorage(db)
+		ctx := context.Background()
+		now := time.Now().Format(time.RFC3339)
+
+		metrics := []models.MetricJSON{
+			{ID: "requests", MType: "counter", Delta: int64Ptr(42)},
+		}
+
+		mock.ExpectBegin()
+		mock.ExpectPrepare("INSERT INTO metrics .* DO UPDATE SET delta")
+		mock.ExpectPrepare("INSERT INTO metrics .* DO UPDATE SET value")
+
+		mock.ExpectExec("INSERT INTO metrics .* DO UPDATE SET delta").
+			WithArgs("requests", "counter", *metrics[0].Delta, now).
+			WillReturnError(errors.New("exec error"))
+
+		mock.ExpectRollback()
+
+		err = pgStorage.UpdateAll(ctx, metrics)
+		assert.ErrorContains(t, err, "exec error")
+	})
+
+	t.Run("commit error", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
+
+		pgStorage := NewPgxStorage(db)
+		ctx := context.Background()
+		now := time.Now().Format(time.RFC3339)
+
+		metrics := []models.MetricJSON{
+			{ID: "requests", MType: "counter", Delta: int64Ptr(42)},
+		}
+
+		mock.ExpectBegin()
+		mock.ExpectPrepare("INSERT INTO metrics .* DO UPDATE SET delta")
+		mock.ExpectPrepare("INSERT INTO metrics .* DO UPDATE SET value")
+
+		mock.ExpectExec("INSERT INTO metrics .* DO UPDATE SET delta").
+			WithArgs("requests", "counter", *metrics[0].Delta, now).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		mock.ExpectCommit().WillReturnError(errors.New("commit error"))
+
+		err = pgStorage.UpdateAll(ctx, metrics)
+		assert.ErrorContains(t, err, "commit error")
+	})
+
+}
+
+func int64Ptr(i int64) *int64       { return &i }
+func float64Ptr(f float64) *float64 { return &f }

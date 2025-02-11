@@ -60,6 +60,24 @@ func (_m *StorageIface) Ping() error {
 	return r0
 }
 
+// UpdateAll provides a mock function with given fields: ctx, metrics
+func (_m *StorageIface) UpdateAll(ctx context.Context, metrics []models.MetricJSON) error {
+	ret := _m.Called(ctx, metrics)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateAll")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []models.MetricJSON) error); ok {
+		r0 = rf(ctx, metrics)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // UpdateCounter provides a mock function with given fields: ctx, name, value
 func (_m *StorageIface) UpdateCounter(ctx context.Context, name string, value int64) error {
 	ret := _m.Called(ctx, name, value)
