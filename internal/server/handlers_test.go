@@ -12,6 +12,7 @@ import (
 	"github.com/runtime-metrics-course/internal/mocks"
 	"github.com/runtime-metrics-course/internal/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,7 +29,7 @@ func TestUpdateHandler(t *testing.T) {
 			url:    "/update/counter/requests/10",
 			method: http.MethodPost,
 			setupMock: func(storage *mocks.StorageIface) {
-				storage.On("UpdateCounter", "requests", int64(10)).Return(nil)
+				storage.On("UpdateCounter", mock.Anything, "requests", int64(10)).Return(nil)
 			},
 			expectedCode: http.StatusOK,
 		},
@@ -106,11 +107,11 @@ func TestGetMetricValue(t *testing.T) {
 			url:    "/value/gauge/temperature",
 			method: http.MethodGet,
 			setupMock: func(storage *mocks.StorageIface) {
-				storage.On("GetMetrics").Return(models.Metrics{
+				storage.On("GetMetrics", mock.Anything).Return(models.Metrics{
 					Gauges: models.Gauges{
 						"temperature": 25.5,
 					},
-				})
+				}, nil)
 			},
 			expectedCode: http.StatusOK,
 			expectedBody: "25.5",
@@ -120,11 +121,11 @@ func TestGetMetricValue(t *testing.T) {
 			url:    "/value/counter/requests",
 			method: http.MethodGet,
 			setupMock: func(storage *mocks.StorageIface) {
-				storage.On("GetMetrics").Return(models.Metrics{
+				storage.On("GetMetrics", mock.Anything).Return(models.Metrics{
 					Counters: models.Counters{
 						"requests": 42,
 					},
-				})
+				}, nil)
 			},
 			expectedCode: http.StatusOK,
 			expectedBody: "42",
@@ -134,9 +135,9 @@ func TestGetMetricValue(t *testing.T) {
 			url:    "/value/gauge/unknown",
 			method: http.MethodGet,
 			setupMock: func(storage *mocks.StorageIface) {
-				storage.On("GetMetrics").Return(models.Metrics{
+				storage.On("GetMetrics", mock.Anything).Return(models.Metrics{
 					Gauges: models.Gauges{},
-				})
+				}, nil)
 			},
 			expectedCode: http.StatusNotFound,
 			expectedBody: "Unknown metric\n",
@@ -146,9 +147,9 @@ func TestGetMetricValue(t *testing.T) {
 			url:    "/value/counter/unknown",
 			method: http.MethodGet,
 			setupMock: func(storage *mocks.StorageIface) {
-				storage.On("GetMetrics").Return(models.Metrics{
+				storage.On("GetMetrics", mock.Anything).Return(models.Metrics{
 					Counters: models.Counters{},
-				})
+				}, nil)
 			},
 			expectedCode: http.StatusNotFound,
 			expectedBody: "Unknown metric\n",
@@ -158,10 +159,10 @@ func TestGetMetricValue(t *testing.T) {
 			url:    "/value/invalid/metric",
 			method: http.MethodGet,
 			setupMock: func(storage *mocks.StorageIface) {
-				storage.On("GetMetrics").Return(models.Metrics{
+				storage.On("GetMetrics", mock.Anything).Return(models.Metrics{
 					Counters: models.Counters{},
 					Gauges:   models.Gauges{},
-				})
+				}, nil)
 			},
 			expectedCode: http.StatusBadRequest,
 			expectedBody: "Unknown metric type\n",
@@ -217,11 +218,11 @@ func TestGetMetricValueJSONHandler(t *testing.T) {
 				MType: models.Gauge,
 			},
 			setupMock: func(storage *mocks.StorageIface) {
-				storage.On("GetMetrics").Return(models.Metrics{
+				storage.On("GetMetrics", mock.Anything).Return(models.Metrics{
 					Gauges: models.Gauges{
 						"temperature": 25.5,
 					},
-				})
+				}, nil)
 			},
 			expectedCode: http.StatusOK,
 			expectedBody: models.MetricJSON{

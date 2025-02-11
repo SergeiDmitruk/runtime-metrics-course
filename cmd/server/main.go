@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"fmt"
@@ -94,12 +95,16 @@ func ParseFlags() *storage.Cfg {
 
 func initDB(dsn string) error {
 	var err error
+	ctx, close := context.WithTimeout(context.Background(), time.Second*5)
+	defer close()
 	conn, err = sql.Open("pgx", dsn)
 	if err != nil {
 		return fmt.Errorf("ошибка подключения к БД: %w", err)
 	}
-
-	if err = conn.Ping(); err != nil {
+	query := "CREATE TABLE IF NOT EXISTS metrics " +
+		"(id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL UNIQUE, type VARCHAR(50) NOT NULL, value DOUBLE PRECISION, delta BIGINT,updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+	_, err = conn.ExecContext(ctx, query)
+	if err != nil {
 		return fmt.Errorf("проверка соединения не удалась: %w", err)
 	}
 

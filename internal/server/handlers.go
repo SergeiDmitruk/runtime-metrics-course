@@ -30,7 +30,11 @@ func GetNewMetricsHandler(storage storage.StorageIface) *MetricsHadler {
 func (h *MetricsHadler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	tmpl := templates.GetMetricsTemplate()
 
-	data := h.storage.GetMetrics()
+	data, err := h.storage.GetMetrics(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.Execute(w, data); err != nil {
@@ -44,7 +48,11 @@ func (h *MetricsHadler) GetMetricValue(w http.ResponseWriter, r *http.Request) {
 	name := strings.ToLower(chi.URLParam(r, "name"))
 
 	metricType := chi.URLParam(r, "metric_type")
-	metrics := h.storage.GetMetrics()
+	metrics, err := h.storage.GetMetrics(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	switch metricType {
 	case Gauge:
 		if val, ok := metrics.Gauges[name]; ok {
@@ -79,7 +87,11 @@ func (h *MetricsHadler) GetMetricValueJSON(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	metricName := strings.ToLower(metric.ID)
-	storageMetrics := h.storage.GetMetrics()
+	storageMetrics, err := h.storage.GetMetrics(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	switch metric.MType {
 	case Gauge:
 		if val, ok := storageMetrics.Gauges[metricName]; ok {
@@ -121,14 +133,14 @@ func (h *MetricsHadler) Update(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid gauge value", http.StatusBadRequest)
 			return
 		}
-		h.storage.UpdateGauge(strings.ToLower(name), val)
+		h.storage.UpdateGauge(r.Context(), name, val)
 	case Counter:
 		val, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			http.Error(w, "Invalid counter value", http.StatusBadRequest)
 			return
 		}
-		h.storage.UpdateCounter(strings.ToLower(name), val)
+		h.storage.UpdateCounter(r.Context(), name, val)
 
 	default:
 		http.Error(w, "Invalid metric type", http.StatusBadRequest)
@@ -148,21 +160,25 @@ func (h MetricsHadler) UpdateJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-	storageMetrics := h.storage.GetMetrics()
+	storageMetrics, err := h.storage.GetMetrics(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	switch metric.MType {
 	case Gauge:
 		if metric.Value == nil {
 			http.Error(w, "Invalid gauge value", http.StatusBadRequest)
 			return
 		}
-		h.storage.UpdateGauge(strings.ToLower(metric.ID), *metric.Value)
+		h.storage.UpdateGauge(r.Context(), metric.ID, *metric.Value)
 
 	case Counter:
 		if metric.Delta == nil {
 			http.Error(w, "Invalid counter value", http.StatusBadRequest)
 			return
 		}
-		h.storage.UpdateCounter(strings.ToLower(metric.ID), *metric.Delta)
+		h.storage.UpdateCounter(r.Context(), metric.ID, *metric.Delta)
 
 		if val, ok := storageMetrics.Counters[metric.ID]; ok {
 			metric.Delta = &val

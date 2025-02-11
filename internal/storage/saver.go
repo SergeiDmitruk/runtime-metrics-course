@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -52,9 +53,15 @@ func (sw *StorageWorker) LoadFromFile() error {
 	for _, metric := range data {
 		switch {
 		case metric.IsCounter():
-			sw.storage.UpdateCounter(metric.ID, *metric.Delta)
+			err := sw.storage.UpdateCounter(context.Background(), metric.ID, *metric.Delta)
+			if err != nil {
+				return err
+			}
 		case metric.IsGauge():
-			sw.storage.UpdateGauge(metric.ID, *metric.Value)
+			err := sw.storage.UpdateGauge(context.Background(), metric.ID, *metric.Value)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	log.Println("Метрики загружены из файла")
@@ -69,10 +76,12 @@ func (sw *StorageWorker) SaveToFile() error {
 	defer file.Close()
 
 	var data []*models.MetricJSON
-	metrics := sw.storage.GetMetrics()
-
+	metrics, err := sw.storage.GetMetrics(context.Background())
+	if err != nil {
+		return err
+	}
 	for name, val := range metrics.Gauges {
-		jm, err := utils.ParseMetricToJSON(models.Gauge, name, val)
+		jm, err := utils.MarshalMetricToJSON(models.Gauge, name, val)
 		if err != nil {
 			continue
 		}
@@ -80,7 +89,7 @@ func (sw *StorageWorker) SaveToFile() error {
 	}
 
 	for name, val := range metrics.Counters {
-		jm, err := utils.ParseMetricToJSON(models.Counter, name, val)
+		jm, err := utils.MarshalMetricToJSON(models.Counter, name, val)
 		if err != nil {
 			continue
 		}

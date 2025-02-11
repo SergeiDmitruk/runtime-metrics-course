@@ -3,7 +3,6 @@ package storage
 import (
 	"database/sql"
 	"errors"
-	"log"
 	"time"
 )
 
@@ -35,7 +34,7 @@ func NewStorageManager(cfg *Cfg) (*StorageManager, error) {
 
 	var err error
 	switch {
-	case cfg.Conn != nil:
+	case cfg != nil && cfg.Conn != nil:
 		currentSM.storage = NewPgxStorage(cfg.Conn)
 		currentSM.storageType = PostgresDB
 
@@ -52,7 +51,6 @@ func NewStorageManager(cfg *Cfg) (*StorageManager, error) {
 }
 
 func (m *StorageManager) GetStorage() (StorageIface, error) {
-	log.Println("OK", m.storageType)
 	if m.storage == nil {
 		return nil, errors.New("storage is not initialized")
 	}
@@ -61,4 +59,17 @@ func (m *StorageManager) GetStorage() (StorageIface, error) {
 
 func (m *StorageManager) GetStorageType() string {
 	return m.storageType
+}
+
+func (m *StorageManager) SaverRun() {
+	if m.storageType != RuntimeMemory {
+		return
+	}
+	m.StorageWorker.SaverRun()
+}
+func (m *StorageManager) SaverStop() {
+	if m.storageType != RuntimeMemory {
+		return
+	}
+	m.StorageWorker.SaverStop()
 }
