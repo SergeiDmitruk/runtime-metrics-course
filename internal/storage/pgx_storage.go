@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/runtime-metrics-course/internal/models"
+	"github.com/runtime-metrics-course/internal/utils"
 )
 
 type PgxStorage struct {
@@ -28,21 +29,31 @@ func (s *PgxStorage) Ping() error {
 }
 
 func (s *PgxStorage) UpdateGauge(ctx context.Context, name string, value float64) error {
-	if _, err := s.conn.ExecContext(ctx,
-		"INSERT INTO metrics (name, type, value, updated_at)"+
-			"VALUES ($1, $2, $3, $4)"+
-			" ON CONFLICT (name)"+" DO UPDATE SET value = $3, updated_at = $4 ", name, models.Gauge, value, time.Now().Format(time.RFC3339)); err != nil {
+	operation := func() error {
+		_, err := s.conn.ExecContext(ctx,
+			"INSERT INTO metrics (name, type, value, updated_at)"+
+				"VALUES ($1, $2, $3, $4)"+
+				" ON CONFLICT (name)"+" DO UPDATE SET value = $3, updated_at = $4 ", name, models.Gauge, value, time.Now().Format(time.RFC3339))
+		return err
+
+	}
+	if err := utils.WithRetry(ctx, operation); err != nil {
 		return err
 	}
+
 	return s.cache.UpdateGauge(ctx, name, value)
 
 }
 func (s *PgxStorage) UpdateCounter(ctx context.Context, name string, delta int64) error {
+	operation := func() error {
+		_, err := s.conn.ExecContext(ctx,
+			"INSERT INTO metrics (name, type, delta, updated_at)"+
+				"VALUES ($1, $2, $3, $4)"+
+				" ON CONFLICT (name)"+" DO UPDATE SET delta =  metrics.delta + $3, updated_at = $4 ", name, models.Counter, delta, time.Now().Format(time.RFC3339))
+		return err
 
-	if _, err := s.conn.ExecContext(ctx,
-		"INSERT INTO metrics (name, type, delta, updated_at)"+
-			"VALUES ($1, $2, $3, $4)"+
-			" ON CONFLICT (name)"+" DO UPDATE SET delta =  metrics.delta + $3, updated_at = $4 ", name, models.Counter, delta, time.Now().Format(time.RFC3339)); err != nil {
+	}
+	if err := utils.WithRetry(ctx, operation); err != nil {
 		return err
 	}
 
@@ -54,50 +65,58 @@ func (s *PgxStorage) GetMetrics(ctx context.Context) (models.Metrics, error) {
 }
 
 func (s *PgxStorage) UpdateAll(ctx context.Context, metrics []models.MetricJSON) error {
-	tx, err := s.conn.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
+	operation := func() error {
+		tx, err := s.conn.BeginTx(ctx, nil)
 		if err != nil {
-			tx.Rollback()
+			return err
 		}
-	}()
-	stmtCounter, err := tx.PrepareContext(ctx, "INSERT INTO metrics (name, type, delta, updated_at)"+
-		"VALUES ($1, $2, $3, $4)"+
-		" ON CONFLICT (name)"+" DO UPDATE SET delta =  metrics.delta + $3, updated_at = $4 ")
-	if err != nil {
-		return err
-	}
-	defer stmtCounter.Close()
-	stmtGouge, err := tx.PrepareContext(ctx, "INSERT INTO metrics (name, type, value, updated_at)"+
-		"VALUES ($1, $2, $3, $4)"+
-		" ON CONFLICT (name)"+" DO UPDATE SET value = $3, updated_at = $4 ")
-	if err != nil {
-		return err
-	}
-	defer stmtGouge.Close()
-	now := time.Now().Format(time.RFC3339)
-	for _, metric := range metrics {
-		switch {
-		case metric.IsCounter() && metric.Delta != nil:
-			if _, err := stmtCounter.ExecContext(ctx, metric.ID, metric.MType, metric.Delta, now); err != nil {
-				return err
+		defer func() {
+			if err != nil {
+				tx.Rollback()
 			}
-		case metric.IsGauge() && metric.Value != nil:
-			if _, err := stmtGouge.ExecContext(ctx, metric.ID, metric.MType, metric.Value, now); err != nil {
-				return err
+		}()
+
+		stmtCounter, err := tx.PrepareContext(ctx, "INSERT INTO metrics (name, type, delta, updated_at)"+
+			"VALUES ($1, $2, $3, $4)"+
+			" ON CONFLICT (name) DO UPDATE SET delta = metrics.delta + $3, updated_at = $4")
+		if err != nil {
+			return err
+		}
+		defer stmtCounter.Close()
+
+		stmtGauge, err := tx.PrepareContext(ctx, "INSERT INTO metrics (name, type, value, updated_at)"+
+			"VALUES ($1, $2, $3, $4)"+
+			" ON CONFLICT (name) DO UPDATE SET value = $3, updated_at = $4")
+		if err != nil {
+			return err
+		}
+		defer stmtGauge.Close()
+
+		now := time.Now().Format(time.RFC3339)
+		for _, metric := range metrics {
+			switch {
+			case metric.IsCounter() && metric.Delta != nil:
+				if _, err := stmtCounter.ExecContext(ctx, metric.ID, metric.MType, metric.Delta, now); err != nil {
+					return err
+				}
+			case metric.IsGauge() && metric.Value != nil:
+				if _, err := stmtGauge.ExecContext(ctx, metric.ID, metric.MType, metric.Value, now); err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("%s: invalid metric type or value", metric.ID)
 			}
-		default:
-			return fmt.Errorf("%s: invalid metric type or value", metric.ID)
 		}
 
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+
+		s.cache.UpdateAll(ctx, metrics)
+		return nil
 	}
-	s.cache.UpdateAll(ctx, metrics)
 
-	return tx.Commit()
-
+	return utils.WithRetry(ctx, operation)
 }
 
 func (s *PgxStorage) InitCache(ctx context.Context) error {

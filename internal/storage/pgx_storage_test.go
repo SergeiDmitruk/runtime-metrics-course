@@ -59,24 +59,28 @@ func TestUpdateCounterDB(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestUpdateGaugeDB_Error(t *testing.T) {
+func TestUpdateGauge_Error(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
 
-	mockStorage := &PgxStorage{conn: db}
+	mockStorage := &PgxStorage{conn: db, cache: NewMemStorage()}
 
 	name := "cpu_usage"
 	value := 42.5
-	now := time.Now().Format(time.RFC3339)
+	cxt, close := context.WithTimeout(context.Background(), time.Second)
+	defer close()
 
 	mock.ExpectExec("INSERT INTO metrics").
-		WithArgs(name, "gauge", value, now).
+		WithArgs(name, models.Gauge, value, sqlmock.AnyArg()).
 		WillReturnError(sql.ErrConnDone)
 
-	err = mockStorage.UpdateGauge(context.Background(), name, value)
-	assert.Error(t, err)
-	assert.Equal(t, sql.ErrConnDone, err)
+	err = mockStorage.UpdateGauge(cxt, name, value)
+
+	expectedErr := "operation failed after retries: sql: connection is already closed"
+	assert.EqualError(t, err, expectedErr)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestUpdateCounter_Error(t *testing.T) {
@@ -84,19 +88,23 @@ func TestUpdateCounter_Error(t *testing.T) {
 	assert.NoError(t, err)
 	defer db.Close()
 
-	mockStorage := &PgxStorage{conn: db}
+	mockStorage := &PgxStorage{conn: db, cache: NewMemStorage()}
 
 	name := "requests_total"
 	delta := int64(5)
-	now := time.Now().Format(time.RFC3339)
 
 	mock.ExpectExec("INSERT INTO metrics").
-		WithArgs(name, "counter", delta, now).
-		WillReturnError(sql.ErrConnDone)
+		WithArgs(name, models.Counter, delta, sqlmock.AnyArg()).
+		WillReturnError(errors.New("failed to execute query"))
 
-	err = mockStorage.UpdateCounter(context.Background(), name, delta)
-	assert.Error(t, err)
-	assert.Equal(t, sql.ErrConnDone, err)
+	cxt, close := context.WithTimeout(context.Background(), time.Second)
+	defer close()
+	err = mockStorage.UpdateCounter(cxt, name, delta)
+
+	expectedErr := "operation failed after retries: failed to execute query"
+	assert.EqualError(t, err, expectedErr)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestPgxStorage_InitCache(t *testing.T) {

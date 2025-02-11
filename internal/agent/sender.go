@@ -134,28 +134,31 @@ func SendAll(storage storage.StorageIface, serverAddress string) error {
 }
 
 func sendRequest(client *http.Client, url string, body []byte) error {
-	cbody, err := utils.CompressGzip(body)
-	if err != nil {
-		return fmt.Errorf("failed to compress request: %w", err)
-	}
+	operation := func() error {
+		cbody, err := utils.CompressGzip(body)
+		if err != nil {
+			return fmt.Errorf("failed to compress request: %w", err)
+		}
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(cbody))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(cbody))
+		if err != nil {
+			return fmt.Errorf("failed to create request: %w", err)
+		}
+		if body != nil {
+			req.Header.Set("Content-Type", "application/json")
 
-		req.Header.Set("Content-Encoding", "gzip")
-	} else {
-		req.Header.Set("Content-Type", "text/plain")
-	}
-	req.Header.Set("Accept-Encoding", "gzip")
+			req.Header.Set("Content-Encoding", "gzip")
+		} else {
+			req.Header.Set("Content-Type", "text/plain")
+		}
+		req.Header.Set("Accept-Encoding", "gzip")
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send request: %w", err)
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("failed to send request: %w", err)
+		}
+		defer resp.Body.Close()
+		return nil
 	}
-	defer resp.Body.Close()
-	return nil
+	return utils.WithRetry(context.Background(), operation)
 }
