@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/jackc/pgx"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/runtime-metrics-course/internal/logger"
 	"github.com/runtime-metrics-course/internal/server"
 	"github.com/runtime-metrics-course/internal/storage"
@@ -55,14 +55,15 @@ func main() {
 }
 
 func ParseFlags() *storage.Cfg {
-	address = *flag.String("a", "localhost:8080", "server address ")
+	addressFlag := flag.String("a", "localhost:8080", "server address ")
 	storeInterval := flag.Int("i", 300, "Интервал сохранения в секундах (0 = синхронное сохранение)")
 	filePath := flag.String("f", "metrics.json", "Путь до файла хранения метрик")
 	restore := flag.Bool("r", true, "Восстанавливать метрики при старте")
-	databaseDSN = *flag.String("d", "", "DB DSN")
+	databaseDSNFlag := flag.String("d", "", "DB DSN")
 
 	flag.Parse()
-
+	address = *addressFlag
+	databaseDSN = *databaseDSNFlag
 	if env, ok := os.LookupEnv("ADDRESS"); ok {
 		address = env
 	}

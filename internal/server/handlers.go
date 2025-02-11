@@ -183,6 +183,7 @@ func (h MetricsHadler) UpdateJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MetricsHadler) PingDBHandler(w http.ResponseWriter, r *http.Request) {
+
 	if err := h.storage.Ping(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
