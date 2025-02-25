@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -85,7 +84,7 @@ func (h *MetricsHandler) GetMetricValue(w http.ResponseWriter, r *http.Request) 
 
 func (h *MetricsHandler) GetMetricValueJSON(w http.ResponseWriter, r *http.Request) {
 	metric := &models.MetricJSON{}
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -94,6 +93,7 @@ func (h *MetricsHandler) GetMetricValueJSON(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
+	metricName := metric.ID
 	metricName := metric.ID
 	storageMetrics, err := h.storage.GetMetrics(r.Context())
 	if err != nil {
@@ -161,7 +161,7 @@ func (h *MetricsHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h MetricsHandler) UpdateJSON(w http.ResponseWriter, r *http.Request) {
 	metric := &models.MetricJSON{}
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
