@@ -60,6 +60,7 @@ func WithRetry(ctx context.Context, operation func() error) error {
 				return ctx.Err()
 			case <-time.After(delay):
 			}
+			continue
 		}
 
 		break
