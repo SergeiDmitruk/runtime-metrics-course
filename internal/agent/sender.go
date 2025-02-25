@@ -25,26 +25,26 @@ func SendMetrics(storage storage.StorageIface, serverAddress string) error {
 	}
 
 	for name, value := range metrics.Gauges {
-		baseUrl, err := url.Parse(serverAddress)
+		baseURL, err := url.Parse(serverAddress)
 		if err != nil {
 			logger.Log.Error(err.Error())
 			return err
 		}
-		baseUrl.Path += "/update/gauge/" + url.PathEscape(name) + "/" + url.PathEscape(fmt.Sprintf("%f", value))
-		if err := sendRequest(client, baseUrl.String(), nil); err != nil {
+		baseURL.Path += "/update/gauge/" + url.PathEscape(name) + "/" + url.PathEscape(fmt.Sprintf("%f", value))
+		if err := sendRequest(client, baseURL.String(), nil); err != nil {
 			logger.Log.Sugar().Errorf("Error sending gauge %s: %v", name, err)
 			return err
 		}
 	}
 
 	for name, value := range metrics.Counters {
-		baseUrl, err := url.Parse(serverAddress)
+		baseURL, err := url.Parse(serverAddress)
 		if err != nil {
 			logger.Log.Error(err.Error())
 			return err
 		}
-		baseUrl.Path += "/update/counter/" + url.PathEscape(name) + "/" + url.PathEscape(fmt.Sprintf("%d", value))
-		if err := sendRequest(client, baseUrl.String(), nil); err != nil {
+		baseURL.Path += "/update/counter/" + url.PathEscape(name) + "/" + url.PathEscape(fmt.Sprintf("%d", value))
+		if err := sendRequest(client, baseURL.String(), nil); err != nil {
 			logger.Log.Sugar().Errorf("Error sending counter %s: %v", name, err)
 			return err
 		}
@@ -105,12 +105,12 @@ func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 
 func SendAll(storage storage.StorageIface, serverAddress string) error {
 	client := &http.Client{Timeout: 5 * time.Second}
-	baseUrl, err := url.Parse(serverAddress)
+	baseURL, err := url.Parse(serverAddress)
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return err
 	}
-	baseUrl.Path += "/updates/"
+	baseURL.Path += "/updates/"
 	allMetrics := make([]*models.MetricJSON, 0)
 	batch := make([]*models.MetricJSON, 0, 100)
 	metrics, err := storage.GetMetrics(context.Background())
@@ -140,7 +140,7 @@ func SendAll(storage storage.StorageIface, serverAddress string) error {
 				return err
 			}
 
-			err = sendRequest(client, baseUrl.String(), data)
+			err = sendRequest(client, baseURL.String(), data)
 			if err != nil {
 				return err
 			}
