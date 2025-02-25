@@ -9,6 +9,7 @@ import (
 
 	"github.com/caarlos0/env/v6"
 	"github.com/runtime-metrics-course/internal/agent"
+	"github.com/runtime-metrics-course/internal/logger"
 	"github.com/runtime-metrics-course/internal/storage"
 )
 
@@ -24,7 +25,9 @@ func main() {
 	reportIntervalFlag := flag.Int("r", 10, "report interval")
 
 	flag.Parse()
-
+	if err := logger.Init("info"); err != nil {
+		log.Fatal(err)
+	}
 	config := &Config{
 		Host:           *hostFlag,
 		PollInterval:   *pollIntervalFlag,
@@ -32,7 +35,7 @@ func main() {
 	}
 	err := env.Parse(config)
 	if err != nil {
-		log.Fatal(err)
+		logger.Log.Fatal(err.Error())
 	}
 
 	if configEnv := os.Getenv("ADDRESS"); configEnv != "" {
@@ -42,18 +45,18 @@ func main() {
 	if !strings.Contains(config.Host, "http") {
 		config.Host = "http://" + config.Host
 	}
-	sm, err := storage.NewStorageManager(storage.RuntimeMemory, nil)
+	sm, err := storage.NewStorageManager(nil)
 	if err != nil {
-		log.Fatal(err)
+		logger.Log.Fatal(err.Error())
 	}
 
 	storage, err := sm.GetStorage()
 	if err != nil {
-		log.Fatal(err)
+		logger.Log.Fatal(err.Error())
 	}
 	if err := agent.StartAgent(storage, config.Host, time.Duration(config.PollInterval)*time.Second, time.Duration(config.ReportInterval)*time.Second); err != nil {
-		log.Fatal(err)
+		logger.Log.Fatal(err.Error())
 	}
-	log.Println("agent start send to", config.Host)
+	logger.Log.Sugar().Info("agent start send to ", config.Host)
 	select {}
 }

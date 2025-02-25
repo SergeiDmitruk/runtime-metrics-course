@@ -1,32 +1,11 @@
 package logger
 
 import (
-	"net/http"
-	"time"
-
 	"go.uber.org/zap"
 )
 
 var Log *zap.Logger = zap.NewNop()
 
-type respData struct {
-	statusCode int
-	size       int
-}
-type loggerResponseWriter struct {
-	http.ResponseWriter
-	respData *respData
-}
-
-func (r *loggerResponseWriter) WriteHeader(statusCode int) {
-	r.ResponseWriter.WriteHeader(statusCode)
-	r.respData.statusCode = statusCode
-}
-func (r *loggerResponseWriter) Write(b []byte) (int, error) {
-	size, err := r.ResponseWriter.Write(b)
-	r.respData.size += size
-	return size, err
-}
 func Init(level string) error {
 	l, err := zap.ParseAtomicLevel(level)
 	if err != nil {
@@ -41,23 +20,4 @@ func Init(level string) error {
 		return err
 	}
 	return nil
-}
-
-func LoggerMdlwr(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		lw := loggerResponseWriter{
-			ResponseWriter: w,
-			respData:       &respData{},
-		}
-		next.ServeHTTP(&lw, r)
-
-		Log.Sugar().Infoln(
-			"uri", r.RequestURI,
-			"method", r.Method,
-			"status", lw.respData.statusCode,
-			"size", lw.respData.size,
-			"duration", time.Since(start),
-		)
-	})
 }

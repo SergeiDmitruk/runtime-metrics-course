@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"testing"
 
 	"github.com/runtime-metrics-course/internal/models"
@@ -43,10 +44,10 @@ func TestUpdateGauge(t *testing.T) {
 		{
 			name: "Single update",
 			update: func(storage *MemStorage) {
-				storage.UpdateGauge("temperature", 23.5)
+				storage.UpdateGauge(context.Background(), "temperature", 23.5)
 			},
 			verify: func(storage *MemStorage, t *testing.T) {
-				metrics := storage.GetMetrics()
+				metrics, _ := storage.GetMetrics(context.Background())
 				if metrics.Gauges["temperature"] != 23.5 {
 					t.Errorf("Expected gauge value 23.5, got %v", metrics.Gauges["temperature"])
 				}
@@ -55,11 +56,11 @@ func TestUpdateGauge(t *testing.T) {
 		{
 			name: "Overwrite gauge",
 			update: func(storage *MemStorage) {
-				storage.UpdateGauge("temperature", 23.5)
-				storage.UpdateGauge("temperature", 25.0)
+				storage.UpdateGauge(context.Background(), "temperature", 23.5)
+				storage.UpdateGauge(context.Background(), "temperature", 25.0)
 			},
 			verify: func(storage *MemStorage, t *testing.T) {
-				metrics := storage.GetMetrics()
+				metrics, _ := storage.GetMetrics(context.Background())
 				if metrics.Gauges["temperature"] != 25.0 {
 					t.Errorf("Expected gauge value 25.0 after overwrite, got %v", metrics.Gauges["temperature"])
 				}
@@ -85,10 +86,10 @@ func TestUpdateCounter(t *testing.T) {
 		{
 			name: "Single update",
 			update: func(storage *MemStorage) {
-				storage.UpdateCounter("requests", 10)
+				storage.UpdateCounter(context.Background(), "requests", 10)
 			},
 			verify: func(storage *MemStorage, t *testing.T) {
-				metrics := storage.GetMetrics()
+				metrics, _ := storage.GetMetrics(context.Background())
 				if metrics.Counters["requests"] != 10 {
 					t.Errorf("Expected counter value 10, got %v", metrics.Counters["requests"])
 				}
@@ -97,11 +98,11 @@ func TestUpdateCounter(t *testing.T) {
 		{
 			name: "Multiple updates",
 			update: func(storage *MemStorage) {
-				storage.UpdateCounter("requests", 10)
-				storage.UpdateCounter("requests", 5)
+				storage.UpdateCounter(context.Background(), "requests", 10)
+				storage.UpdateCounter(context.Background(), "requests", 5)
 			},
 			verify: func(storage *MemStorage, t *testing.T) {
-				metrics := storage.GetMetrics()
+				metrics, _ := storage.GetMetrics(context.Background())
 				if metrics.Counters["requests"] != 15 {
 					t.Errorf("Expected counter value 15, got %v", metrics.Counters["requests"])
 				}
@@ -128,7 +129,7 @@ func TestGetMetrics(t *testing.T) {
 			name:   "Get empty metrics",
 			update: func(storage *MemStorage) {},
 			verify: func(storage *MemStorage, t *testing.T) {
-				metrics := storage.GetMetrics()
+				metrics, _ := storage.GetMetrics(context.Background())
 				if len(metrics.Gauges) != 0 {
 					t.Errorf("Expected empty gauges map, got %v", metrics.Gauges)
 				}
@@ -140,11 +141,11 @@ func TestGetMetrics(t *testing.T) {
 		{
 			name: "Get metrics after updates",
 			update: func(storage *MemStorage) {
-				storage.UpdateGauge("temperature", 23.5)
-				storage.UpdateCounter("requests", 10)
+				storage.UpdateGauge(context.Background(), "temperature", 23.5)
+				storage.UpdateCounter(context.Background(), "requests", 10)
 			},
 			verify: func(storage *MemStorage, t *testing.T) {
-				metrics := storage.GetMetrics()
+				metrics, _ := storage.GetMetrics(context.Background())
 				if metrics.Gauges["temperature"] != 23.5 {
 					t.Errorf("Expected temperature gauge value 23.5, got %v", metrics.Gauges["temperature"])
 				}

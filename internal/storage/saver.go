@@ -1,21 +1,16 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
+	"github.com/runtime-metrics-course/internal/logger"
 	"github.com/runtime-metrics-course/internal/models"
-	"github.com/runtime-metrics-course/internal/utils"
 )
 
-type WorkerCfg struct {
-	Interval time.Duration
-	FilePath string
-	Restore  bool
-}
 type StorageWorker struct {
 	interval    time.Duration
 	filePath    string
@@ -24,7 +19,7 @@ type StorageWorker struct {
 	stopChannel chan struct{}
 }
 
-func NewStorageWorker(cfg *WorkerCfg, storage StorageIface) *StorageWorker {
+func NewStorageWorker(cfg *Cfg, storage StorageIface) *StorageWorker {
 	return &StorageWorker{
 		interval:    cfg.Interval,
 		filePath:    cfg.FilePath,
@@ -57,12 +52,18 @@ func (sw *StorageWorker) LoadFromFile() error {
 	for _, metric := range data {
 		switch {
 		case metric.IsCounter():
-			sw.storage.UpdateCounter(metric.ID, *metric.Delta)
+			err := sw.storage.UpdateCounter(context.Background(), metric.ID, *metric.Delta)
+			if err != nil {
+				return err
+			}
 		case metric.IsGauge():
-			sw.storage.UpdateGauge(metric.ID, *metric.Value)
+			err := sw.storage.UpdateGauge(context.Background(), metric.ID, *metric.Value)
+			if err != nil {
+				return err
+			}
 		}
 	}
-	log.Println("Метрики загружены из файла")
+	logger.Log.Sugar().Infoln("Метрики загружены из файла")
 	return nil
 }
 
@@ -74,10 +75,12 @@ func (sw *StorageWorker) SaveToFile() error {
 	defer file.Close()
 
 	var data []*models.MetricJSON
-	metrics := sw.storage.GetMetrics()
-
+	metrics, err := sw.storage.GetMetrics(context.Background())
+	if err != nil {
+		return err
+	}
 	for name, val := range metrics.Gauges {
-		jm, err := utils.ParseMetricToJSON(models.Gauge, name, val)
+		jm, err := models.MarshalMetricToJSON(models.Gauge, name, val)
 		if err != nil {
 			continue
 		}
@@ -85,7 +88,7 @@ func (sw *StorageWorker) SaveToFile() error {
 	}
 
 	for name, val := range metrics.Counters {
-		jm, err := utils.ParseMetricToJSON(models.Counter, name, val)
+		jm, err := models.MarshalMetricToJSON(models.Counter, name, val)
 		if err != nil {
 			continue
 		}
