@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -15,7 +16,10 @@ import (
 
 func SendMetrics(storage storage.StorageIface, serverAddress string) error {
 	client := &http.Client{Timeout: 5 * time.Second}
-	metrics := storage.GetMetrics()
+	metrics, err := storage.GetMetrics(context.Background())
+	if err != nil {
+		log.Println(err)
+	}
 
 	for name, value := range metrics.Gauges {
 		url := fmt.Sprintf("%s/update/gauge/%s/%f", serverAddress, name, value)
@@ -38,7 +42,10 @@ func SendMetrics(storage storage.StorageIface, serverAddress string) error {
 
 func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 	client := &http.Client{Timeout: 5 * time.Second}
-	metrics := storage.GetMetrics()
+	metrics, err := storage.GetMetrics(context.Background())
+	if err != nil {
+		log.Println(err)
+	}
 
 	for name, value := range metrics.Gauges {
 		metric := &models.MetricJSON{
@@ -83,6 +90,49 @@ func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 	return nil
 }
 
+func SendAll(storage storage.StorageIface, serverAddress string) error {
+	client := &http.Client{Timeout: 5 * time.Second}
+	url := fmt.Sprintf("%s/updates/", serverAddress)
+	allMetrics := make([]*models.MetricJSON, 0)
+	batch := make([]*models.MetricJSON, 0, 100)
+	metrics, err := storage.GetMetrics(context.Background())
+	if err != nil {
+		return err
+	}
+	for key, v := range metrics.Gauges {
+		m, err := utils.MarshalMetricToJSON(models.Gauge, key, v)
+		if err == nil {
+			allMetrics = append(allMetrics, m)
+		}
+	}
+
+	for key, v := range metrics.Counters {
+		m, err := utils.MarshalMetricToJSON(models.Counter, key, v)
+		if err == nil {
+			allMetrics = append(allMetrics, m)
+		}
+	}
+
+	for i := 0; i < len(allMetrics); i++ {
+		batch = append(batch, allMetrics[i])
+		if len(batch) == cap(batch) || i == len(allMetrics)-1 {
+
+			data, err := json.Marshal(batch)
+			if err != nil {
+				return err
+			}
+
+			err = sendRequest(client, url, data)
+			if err != nil {
+				return err
+			}
+			batch = batch[:0]
+		}
+	}
+
+	return nil
+}
+
 func sendRequest(client *http.Client, url string, body []byte) error {
 	cbody, err := utils.CompressGzip(body)
 	if err != nil {
@@ -106,7 +156,6 @@ func sendRequest(client *http.Client, url string, body []byte) error {
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
-
 	defer resp.Body.Close()
 	return nil
 }

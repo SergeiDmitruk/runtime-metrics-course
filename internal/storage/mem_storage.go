@@ -1,6 +1,9 @@
 package storage
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/runtime-metrics-course/internal/models"
@@ -19,19 +22,21 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (m *MemStorage) UpdateGauge(name string, value float64) {
+func (m *MemStorage) UpdateGauge(ctx context.Context, name string, value float64) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.gauges[name] = value
+	return nil
 }
 
-func (m *MemStorage) UpdateCounter(name string, value int64) {
+func (m *MemStorage) UpdateCounter(tx context.Context, name string, value int64) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.counters[name] += value
+	return nil
 }
 
-func (m *MemStorage) GetMetrics() models.Metrics {
+func (m *MemStorage) GetMetrics(ctx context.Context) (models.Metrics, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -44,5 +49,27 @@ func (m *MemStorage) GetMetrics() models.Metrics {
 		copyCounters[k] = v
 	}
 
-	return models.Metrics{Gauges: copyGauges, Counters: copyCounters}
+	return models.Metrics{Gauges: copyGauges, Counters: copyCounters}, nil
+}
+
+func (m *MemStorage) Ping() error {
+	return errors.New("db is not initialized")
+}
+
+func (m *MemStorage) UpdateAll(ctx context.Context, metrics []models.MetricJSON) error {
+	var errs []error
+	for _, metric := range metrics {
+
+		switch {
+		case metric.IsCounter() && metric.Delta != nil:
+			m.UpdateCounter(ctx, metric.ID, *metric.Delta)
+		case metric.IsGauge() && metric.Value != nil:
+			m.UpdateGauge(ctx, metric.ID, *metric.Value)
+		default:
+
+			errs = append(errs, fmt.Errorf("%s: invalid metric type or value", metric.ID))
+		}
+
+	}
+	return errors.Join(errs...)
 }
