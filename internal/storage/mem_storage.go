@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/runtime-metrics-course/internal/models"
@@ -46,17 +45,4 @@ func (m *MemStorage) GetMetrics() models.Metrics {
 	}
 
 	return models.Metrics{Gauges: copyGauges, Counters: copyCounters}
-}
-
-func (m *MemStorage) PrintMetrics() { // test stdout
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	fmt.Println("------Metrics-------")
-	for name, val := range m.gauges {
-		fmt.Println(name, val)
-	}
-	for name, val := range m.counters {
-		fmt.Println(name, val)
-	}
-	fmt.Println("--------------------")
 }

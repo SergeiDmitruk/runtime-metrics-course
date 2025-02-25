@@ -18,11 +18,12 @@ func StartAgent(storage storage.StorageIface, address string, pollInterval, repo
 	}()
 	go func() {
 		for range reportTicker.C {
-			err := SendMetrics(storage, address)
-			if err != nil {
-				log.Println("Error sending metrics:", err)
-			}
+			log.Println("------Sending metrics------")
+			SendMetrics(storage, address)
+			SendMetricsJSON(storage, address)
+			log.Println("------Metrics sent successfully------")
 		}
+
 	}()
 	return nil
 }
