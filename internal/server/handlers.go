@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -48,7 +47,6 @@ func (h *MetricsHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *MetricsHandler) GetMetricValue(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +77,6 @@ func (h *MetricsHandler) GetMetricValue(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Unknown metric type", http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *MetricsHandler) GetMetricValueJSON(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +109,6 @@ func (h *MetricsHandler) GetMetricValueJSON(w http.ResponseWriter, r *http.Reque
 		if val, ok := storageMetrics.Counters[metricName]; ok {
 			metric.Delta = &val
 		} else {
-			log.Println("не нашли", metric.ID) //убрать
 			http.Error(w, "Unknown metric", http.StatusNotFound)
 			return
 		}
@@ -126,7 +122,6 @@ func (h *MetricsHandler) GetMetricValueJSON(w http.ResponseWriter, r *http.Reque
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(respData)
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *MetricsHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -155,7 +150,6 @@ func (h *MetricsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid metric type", http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h MetricsHandler) UpdateJSON(w http.ResponseWriter, r *http.Request) {
@@ -204,7 +198,6 @@ func (h MetricsHandler) UpdateJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(respData)
 
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *MetricsHandler) PingDBHandler(w http.ResponseWriter, r *http.Request) {
@@ -213,7 +206,6 @@ func (h *MetricsHandler) PingDBHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *MetricsHandler) UpdateAll(w http.ResponseWriter, r *http.Request) {
@@ -231,7 +223,6 @@ func (h *MetricsHandler) UpdateAll(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 func TestUpdateAllHandler(t *testing.T) {
 	tests := []struct {

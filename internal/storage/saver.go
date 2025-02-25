@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
+	"github.com/runtime-metrics-course/internal/logger"
 	"github.com/runtime-metrics-course/internal/models"
-	"github.com/runtime-metrics-course/internal/utils"
 )
 
 type StorageWorker struct {
@@ -64,7 +63,7 @@ func (sw *StorageWorker) LoadFromFile() error {
 			}
 		}
 	}
-	log.Println("Метрики загружены из файла")
+	logger.Log.Sugar().Infoln("Метрики загружены из файла")
 	return nil
 }
 
@@ -81,7 +80,7 @@ func (sw *StorageWorker) SaveToFile() error {
 		return err
 	}
 	for name, val := range metrics.Gauges {
-		jm, err := utils.MarshalMetricToJSON(models.Gauge, name, val)
+		jm, err := models.MarshalMetricToJSON(models.Gauge, name, val)
 		if err != nil {
 			continue
 		}
@@ -89,7 +88,7 @@ func (sw *StorageWorker) SaveToFile() error {
 	}
 
 	for name, val := range metrics.Counters {
-		jm, err := utils.MarshalMetricToJSON(models.Counter, name, val)
+		jm, err := models.MarshalMetricToJSON(models.Counter, name, val)
 		if err != nil {
 			continue
 		}

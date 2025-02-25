@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/runtime-metrics-course/internal/models"
-	"github.com/runtime-metrics-course/internal/utils"
+	"github.com/runtime-metrics-course/internal/resilience"
 )
 
 type PgxStorage struct {
@@ -37,7 +37,7 @@ func (s *PgxStorage) UpdateGauge(ctx context.Context, name string, value float64
 		return err
 
 	}
-	if err := utils.WithRetry(ctx, operation); err != nil {
+	if err := resilience.Retry(ctx, operation); err != nil {
 		return err
 	}
 
@@ -53,7 +53,7 @@ func (s *PgxStorage) UpdateCounter(ctx context.Context, name string, delta int64
 		return err
 
 	}
-	if err := utils.WithRetry(ctx, operation); err != nil {
+	if err := resilience.Retry(ctx, operation); err != nil {
 		return err
 	}
 
@@ -116,7 +116,7 @@ func (s *PgxStorage) UpdateAll(ctx context.Context, metrics []models.MetricJSON)
 		return nil
 	}
 
-	return utils.WithRetry(ctx, operation)
+	return resilience.Retry(ctx, operation)
 }
 
 func (s *PgxStorage) InitCache(ctx context.Context) error {

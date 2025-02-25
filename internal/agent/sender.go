@@ -5,34 +5,47 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
+	"net/url"
 	"time"
 
+	"github.com/runtime-metrics-course/internal/compress"
+	"github.com/runtime-metrics-course/internal/logger"
 	"github.com/runtime-metrics-course/internal/models"
+	"github.com/runtime-metrics-course/internal/resilience"
 	"github.com/runtime-metrics-course/internal/storage"
-	"github.com/runtime-metrics-course/internal/utils"
 )
 
 func SendMetrics(storage storage.StorageIface, serverAddress string) error {
+
 	client := &http.Client{Timeout: 5 * time.Second}
 	metrics, err := storage.GetMetrics(context.Background())
 	if err != nil {
-		log.Println(err)
+		logger.Log.Sugar().Errorln(err)
 	}
 
 	for name, value := range metrics.Gauges {
-		url := fmt.Sprintf("%s/update/gauge/%s/%f", serverAddress, name, value)
-		if err := sendRequest(client, url, nil); err != nil {
-			log.Printf("Error sending gauge %s: %v", name, err)
+		baseUrl, err := url.Parse(serverAddress)
+		if err != nil {
+			logger.Log.Error(err.Error())
+			return err
+		}
+		baseUrl.Path += "/update/gauge/" + url.PathEscape(name) + "/" + url.PathEscape(fmt.Sprintf("%f", value))
+		if err := sendRequest(client, baseUrl.String(), nil); err != nil {
+			logger.Log.Sugar().Errorf("Error sending gauge %s: %v", name, err)
 			return err
 		}
 	}
 
 	for name, value := range metrics.Counters {
-		url := fmt.Sprintf("%s/update/counter/%s/%d", serverAddress, name, value)
-		if err := sendRequest(client, url, nil); err != nil {
-			log.Printf("Error sending counter %s: %v", name, err)
+		baseUrl, err := url.Parse(serverAddress)
+		if err != nil {
+			logger.Log.Error(err.Error())
+			return err
+		}
+		baseUrl.Path += "/update/counter/" + url.PathEscape(name) + "/" + url.PathEscape(fmt.Sprintf("%d", value))
+		if err := sendRequest(client, baseUrl.String(), nil); err != nil {
+			logger.Log.Sugar().Errorf("Error sending counter %s: %v", name, err)
 			return err
 		}
 	}
@@ -44,7 +57,7 @@ func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 	client := &http.Client{Timeout: 5 * time.Second}
 	metrics, err := storage.GetMetrics(context.Background())
 	if err != nil {
-		log.Println(err)
+		logger.Log.Sugar().Errorln(err)
 	}
 
 	for name, value := range metrics.Gauges {
@@ -56,13 +69,13 @@ func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 
 		data, err := json.Marshal(metric)
 		if err != nil {
-			log.Printf("Error marshal gauge %s: %v", name, err)
+			logger.Log.Sugar().Errorf("Error marshal gauge %s: %v", name, err)
 			return err
 		}
 
 		url := fmt.Sprintf("%s/update/", serverAddress)
 		if err := sendRequest(client, url, data); err != nil {
-			log.Printf("Error sending gauge %s: %v", name, err)
+			logger.Log.Sugar().Errorf("Error sending gauge %s: %v", name, err)
 			return err
 		}
 	}
@@ -76,13 +89,13 @@ func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 
 		data, err := json.Marshal(metric)
 		if err != nil {
-			log.Printf("Error marshal gauge %s: %v", name, err)
+			logger.Log.Sugar().Errorf("Error marshal gauge %s: %v", name, err)
 			return err
 		}
 
 		url := fmt.Sprintf("%s/update/", serverAddress)
 		if err := sendRequest(client, url, data); err != nil {
-			log.Printf("Error sending counter %s: %v", name, err)
+			logger.Log.Sugar().Errorf("Error sending counter %s: %v", name, err)
 			return err
 		}
 	}
@@ -92,7 +105,12 @@ func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 
 func SendAll(storage storage.StorageIface, serverAddress string) error {
 	client := &http.Client{Timeout: 5 * time.Second}
-	url := fmt.Sprintf("%s/updates/", serverAddress)
+	baseUrl, err := url.Parse(serverAddress)
+	if err != nil {
+		logger.Log.Error(err.Error())
+		return err
+	}
+	baseUrl.Path += "/updates/"
 	allMetrics := make([]*models.MetricJSON, 0)
 	batch := make([]*models.MetricJSON, 0, 100)
 	metrics, err := storage.GetMetrics(context.Background())
@@ -100,14 +118,14 @@ func SendAll(storage storage.StorageIface, serverAddress string) error {
 		return err
 	}
 	for key, v := range metrics.Gauges {
-		m, err := utils.MarshalMetricToJSON(models.Gauge, key, v)
+		m, err := models.MarshalMetricToJSON(models.Gauge, key, v)
 		if err == nil {
 			allMetrics = append(allMetrics, m)
 		}
 	}
 
 	for key, v := range metrics.Counters {
-		m, err := utils.MarshalMetricToJSON(models.Counter, key, v)
+		m, err := models.MarshalMetricToJSON(models.Counter, key, v)
 		if err == nil {
 			allMetrics = append(allMetrics, m)
 		}
@@ -122,7 +140,7 @@ func SendAll(storage storage.StorageIface, serverAddress string) error {
 				return err
 			}
 
-			err = sendRequest(client, url, data)
+			err = sendRequest(client, baseUrl.String(), data)
 			if err != nil {
 				return err
 			}
@@ -135,7 +153,7 @@ func SendAll(storage storage.StorageIface, serverAddress string) error {
 
 func sendRequest(client *http.Client, url string, body []byte) error {
 	operation := func() error {
-		cbody, err := utils.CompressGzip(body)
+		cbody, err := compress.CompressGzip(body)
 		if err != nil {
 			return fmt.Errorf("failed to compress request: %w", err)
 		}
@@ -160,5 +178,5 @@ func sendRequest(client *http.Client, url string, body []byte) error {
 		defer resp.Body.Close()
 		return nil
 	}
-	return utils.WithRetry(context.Background(), operation)
+	return resilience.Retry(context.Background(), operation)
 }

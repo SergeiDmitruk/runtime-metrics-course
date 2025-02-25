@@ -4,22 +4,22 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/runtime-metrics-course/internal/utils"
+	"github.com/runtime-metrics-course/internal/compress"
 )
 
-func CompressMdlwr(next http.Handler) http.Handler {
+func CompressMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		acceptEncoding := r.Header.Get("Accept-Encoding")
 		supportsGzip := strings.Contains(acceptEncoding, "gzip")
-		cw := utils.NewCompressedWriter(w)
+		cw := compress.NewCompressedWriter(w)
 		if supportsGzip {
 			w = cw
 		}
 
 		contentEncoding := r.Header.Get("Content-Encoding")
 		if contentEncoding == "gzip" {
-			cr, err := utils.NewCompressReader(r.Body)
+			cr, err := compress.NewCompressReader(r.Body)
 			if err != nil {
 				http.Error(w, "failed to decompress gzip body", http.StatusBadRequest)
 				return

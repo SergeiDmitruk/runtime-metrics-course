@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -18,8 +17,8 @@ func InitSever(address string) error {
 	}
 
 	r := chi.NewRouter()
-	r.Use(logger.LoggerMdlwr)
-	r.Use(middleware.CompressMdlwr)
+	r.Use(middleware.LoggerMiddleware)
+	r.Use(middleware.CompressMiddleware)
 	mh := GetNewMetricsHandler(storage)
 	r.Get("/", mh.GetMetrics)
 	r.Get("/ping", mh.PingDBHandler)
@@ -33,6 +32,6 @@ func InitSever(address string) error {
 		r.Post("/{metric_type}/{name}/{value}", mh.Update)
 	})
 
-	log.Println("Server start on", address)
+	logger.Log.Sugar().Infoln("Server start on", address)
 	return http.ListenAndServe(address, r)
 }

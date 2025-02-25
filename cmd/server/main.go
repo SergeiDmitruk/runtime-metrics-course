@@ -24,26 +24,25 @@ var conn *sql.DB
 func main() {
 	cfg := ParseFlags()
 
+	if err := logger.Init("info"); err != nil {
+		log.Fatal(err)
+	}
 	if databaseDSN != "" {
 		if err := initDB(databaseDSN); err != nil {
-			log.Fatal(err)
+			logger.Log.Fatal(err.Error())
 		}
 	}
 	defer conn.Close()
 	cfg.Conn = conn
 	sm, err := storage.NewStorageManager(cfg)
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := logger.Init("info"); err != nil {
-		log.Fatal(err)
+		logger.Log.Fatal(err.Error())
 	}
 
 	sm.SaverRun()
 
 	if err := server.InitSever(address); err != nil {
-		log.Fatal(err)
+		logger.Log.Fatal(err.Error())
 	}
 
 	sigChan := make(chan os.Signal, 1)
@@ -106,6 +105,6 @@ func initDB(dsn string) error {
 		return fmt.Errorf("проверка соединения не удалась: %w", err)
 	}
 
-	log.Println("Подключение к БД успешно")
+	logger.Log.Sugar().Info("Подключение к БД успешно")
 	return nil
 }
