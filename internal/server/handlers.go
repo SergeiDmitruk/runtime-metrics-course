@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/runtime-metrics-course/internal/models"
@@ -45,7 +44,7 @@ func (h *MetricsHadler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MetricsHadler) GetMetricValue(w http.ResponseWriter, r *http.Request) {
-	name := strings.ToLower(chi.URLParam(r, "name"))
+	name := chi.URLParam(r, "name")
 
 	metricType := chi.URLParam(r, "metric_type")
 	metrics, err := h.storage.GetMetrics(r.Context())
@@ -86,7 +85,7 @@ func (h *MetricsHadler) GetMetricValueJSON(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-	metricName := strings.ToLower(metric.ID)
+	metricName := metric.ID
 	storageMetrics, err := h.storage.GetMetrics(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
