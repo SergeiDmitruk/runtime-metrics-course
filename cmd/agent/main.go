@@ -42,7 +42,7 @@ func main() {
 	if !strings.Contains(config.Host, "http") {
 		config.Host = "http://" + config.Host
 	}
-	sm, err := storage.NewStorageManager(storage.RuntimeMemory, nil)
+	sm, err := storage.NewStorageManager(nil)
 	if err != nil {
 		log.Fatal(err)
 	}

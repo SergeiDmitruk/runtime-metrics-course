@@ -3,7 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -69,7 +69,7 @@ func (h *MetricsHadler) GetMetricValue(w http.ResponseWriter, r *http.Request) {
 
 func (h *MetricsHadler) GetMetricValueJSON(w http.ResponseWriter, r *http.Request) {
 	metric := &models.MetricJSON{}
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -139,7 +139,7 @@ func (h *MetricsHadler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h MetricsHadler) UpdateJSON(w http.ResponseWriter, r *http.Request) {
 	metric := &models.MetricJSON{}
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -179,5 +179,14 @@ func (h MetricsHadler) UpdateJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(respData)
 
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *MetricsHadler) PingDBHandler(w http.ResponseWriter, r *http.Request) {
+
+	if err := h.storage.Ping(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 }

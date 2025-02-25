@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/runtime-metrics-course/internal/models"
@@ -45,4 +46,8 @@ func (m *MemStorage) GetMetrics() models.Metrics {
 	}
 
 	return models.Metrics{Gauges: copyGauges, Counters: copyCounters}
+}
+
+func (m *MemStorage) Ping() error {
+	return errors.New("db is not initialized")
 }
