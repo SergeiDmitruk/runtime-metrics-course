@@ -22,6 +22,7 @@ func InitSever(address string) error {
 	r.Use(middleware.CompressMdlwr)
 	mh := GetNewMetricsHandler(storage)
 	r.Get("/", mh.GetMetrics)
+	r.Get("/ping", mh.PingDBHandler)
 	r.Route("/value/", func(r chi.Router) {
 		r.Post("/", mh.GetMetricValueJSON)
 		r.Get("/{metric_type}/{name}", mh.GetMetricValue)

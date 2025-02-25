@@ -7,7 +7,7 @@ import (
 	"github.com/runtime-metrics-course/internal/models"
 )
 
-func ParseMetricToJSON(mType, name string, val interface{}) (*models.MetricJSON, error) {
+func MarshalMetricToJSON(mType, name string, val interface{}) (*models.MetricJSON, error) {
 	metric := models.MetricJSON{
 		ID:    name,
 		MType: mType,

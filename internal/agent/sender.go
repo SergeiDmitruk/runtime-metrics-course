@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -15,7 +16,10 @@ import (
 
 func SendMetrics(storage storage.StorageIface, serverAddress string) error {
 	client := &http.Client{Timeout: 5 * time.Second}
-	metrics := storage.GetMetrics()
+	metrics, err := storage.GetMetrics(context.Background())
+	if err != nil {
+		log.Println(err)
+	}
 
 	for name, value := range metrics.Gauges {
 		url := fmt.Sprintf("%s/update/gauge/%s/%f", serverAddress, name, value)
@@ -38,7 +42,10 @@ func SendMetrics(storage storage.StorageIface, serverAddress string) error {
 
 func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 	client := &http.Client{Timeout: 5 * time.Second}
-	metrics := storage.GetMetrics()
+	metrics, err := storage.GetMetrics(context.Background())
+	if err != nil {
+		log.Println(err)
+	}
 
 	for name, value := range metrics.Gauges {
 		metric := &models.MetricJSON{
