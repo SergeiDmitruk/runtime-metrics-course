@@ -35,7 +35,7 @@ func NewStorageManager(cfg *Cfg) (*StorageManager, error) {
 
 	var err error
 	switch {
-	case cfg.Conn != nil:
+	case cfg != nil && cfg.Conn != nil:
 		currentSM.storage = NewPgxStorage(cfg.Conn)
 		currentSM.storageType = PostgresDB
 
