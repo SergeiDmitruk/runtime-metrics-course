@@ -94,7 +94,6 @@ func (h *MetricsHandler) GetMetricValueJSON(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	metricName := metric.ID
-	metricName := metric.ID
 	storageMetrics, err := h.storage.GetMetrics(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
