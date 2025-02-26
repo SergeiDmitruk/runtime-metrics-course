@@ -68,16 +68,16 @@ func TestUpdateGauge_Error(t *testing.T) {
 
 	name := "cpu_usage"
 	value := 42.5
-	cxt, close := context.WithTimeout(context.Background(), time.Second)
-	defer close()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 
 	mock.ExpectExec("INSERT INTO metrics").
 		WithArgs(name, models.Gauge, value, sqlmock.AnyArg()).
 		WillReturnError(sql.ErrConnDone)
 
-	err = mockStorage.UpdateGauge(cxt, name, value)
+	err = mockStorage.UpdateGauge(ctx, name, value)
 
-	expectedErr := "operation failed after retries: sql: connection is already closed"
+	expectedErr := "sql: connection is already closed"
 	assert.EqualError(t, err, expectedErr)
 
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -97,16 +97,15 @@ func TestUpdateCounter_Error(t *testing.T) {
 		WithArgs(name, models.Counter, delta, sqlmock.AnyArg()).
 		WillReturnError(errors.New("failed to execute query"))
 
-	cxt, close := context.WithTimeout(context.Background(), time.Second)
-	defer close()
-	err = mockStorage.UpdateCounter(cxt, name, delta)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	err = mockStorage.UpdateCounter(ctx, name, delta)
 
-	expectedErr := "operation failed after retries: failed to execute query"
+	expectedErr := "failed to execute query"
 	assert.EqualError(t, err, expectedErr)
 
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
-
 func TestPgxStorage_InitCache(t *testing.T) {
 	mockDB, mock, err := sqlmock.New()
 	assert.NoError(t, err)
