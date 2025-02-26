@@ -9,7 +9,7 @@ import (
 	"github.com/runtime-metrics-course/internal/storage"
 )
 
-func InitSever(address string) error {
+func InitServer(address string) error {
 
 	storage, err := storage.GetStorageManager().GetStorage()
 	if err != nil {

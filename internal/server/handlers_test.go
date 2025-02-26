@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -267,4 +268,79 @@ func TestGetMetricValueJSONHandler(t *testing.T) {
 			storage.AssertExpectations(t)
 		})
 	}
+}
+func TestUpdateAllHandler(t *testing.T) {
+	tests := []struct {
+		name         string
+		url          string
+		method       string
+		body         []models.MetricJSON
+		setupMock    func(storage *mocks.StorageIface)
+		expectedCode int
+	}{
+		{
+			name:   "Valid update of metrics",
+			url:    "/update/",
+			method: http.MethodPost,
+			body: []models.MetricJSON{
+				{ID: "temperature", MType: models.Gauge, Value: pointerToFloat64(25.5)},
+				{ID: "humidity", MType: models.Gauge, Value: pointerToFloat64(60.0)},
+			},
+			setupMock: func(storage *mocks.StorageIface) {
+				storage.On("UpdateAll", mock.Anything, mock.Anything).Return(nil)
+			},
+			expectedCode: http.StatusOK,
+		},
+		{
+			name:   "Invalid JSON body",
+			url:    "/update/",
+			method: http.MethodPost,
+			body:   []models.MetricJSON{},
+			setupMock: func(storage *mocks.StorageIface) {
+				storage.On("UpdateAll", mock.Anything, mock.Anything).Return(errors.New("invalid metric"))
+
+			},
+			expectedCode: http.StatusInternalServerError,
+		},
+		{
+			name:   "Internal server error on update",
+			url:    "/update/",
+			method: http.MethodPost,
+			body: []models.MetricJSON{
+				{ID: "temperature", MType: models.Gauge, Value: pointerToFloat64(25.5)},
+			},
+			setupMock: func(storage *mocks.StorageIface) {
+				storage.On("UpdateAll", mock.Anything, mock.Anything).Return(errors.New("internal error"))
+			},
+			expectedCode: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			storage := mocks.NewStorageIface(t)
+			tt.setupMock(storage)
+
+			r := chi.NewRouter()
+			h := GetNewMetricsHandler(storage)
+			r.Post("/update/", h.UpdateAll)
+
+			testBody, err := json.Marshal(tt.body)
+			require.NoError(t, err)
+			req := httptest.NewRequest(tt.method, tt.url, bytes.NewBuffer(testBody))
+			w := httptest.NewRecorder()
+
+			r.ServeHTTP(w, req)
+
+			if status := w.Code; status != tt.expectedCode {
+				t.Errorf("expected status %v, got %v", tt.expectedCode, status)
+			}
+
+			storage.AssertExpectations(t)
+		})
+	}
+}
+
+func pointerToFloat64(v float64) *float64 {
+	return &v
 }

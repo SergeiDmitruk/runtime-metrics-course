@@ -16,6 +16,8 @@ import (
 	"github.com/runtime-metrics-course/internal/storage"
 )
 
+const batchSize = 100
+
 func SendMetrics(storage storage.StorageIface, serverAddress string) error {
 
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -111,37 +113,33 @@ func SendAll(storage storage.StorageIface, serverAddress string) error {
 		return err
 	}
 	baseURL.Path += "/updates/"
-	allMetrics := make([]*models.MetricJSON, 0)
-	batch := make([]*models.MetricJSON, 0, 100)
+
 	metrics, err := storage.GetMetrics(context.Background())
 	if err != nil {
 		return err
 	}
+
+	allMetrics := make([]*models.MetricJSON, 0)
 	for key, v := range metrics.Gauges {
-		m, err := models.MarshalMetricToJSON(models.Gauge, key, v)
-		if err == nil {
+		if m, err := models.MarshalMetricToJSON(models.Gauge, key, v); err == nil {
 			allMetrics = append(allMetrics, m)
 		}
 	}
-
 	for key, v := range metrics.Counters {
-		m, err := models.MarshalMetricToJSON(models.Counter, key, v)
-		if err == nil {
+		if m, err := models.MarshalMetricToJSON(models.Counter, key, v); err == nil {
 			allMetrics = append(allMetrics, m)
 		}
 	}
 
-	for i := 0; i < len(allMetrics); i++ {
-		batch = append(batch, allMetrics[i])
-		if len(batch) == cap(batch) || i == len(allMetrics)-1 {
-
+	batch := make([]*models.MetricJSON, 0, batchSize)
+	for i, metric := range allMetrics {
+		batch = append(batch, metric)
+		if len(batch) >= batchSize || i == len(allMetrics)-1 {
 			data, err := json.Marshal(batch)
 			if err != nil {
 				return err
 			}
-
-			err = sendRequest(client, baseURL.String(), data)
-			if err != nil {
+			if err := sendRequest(client, baseURL.String(), data); err != nil {
 				return err
 			}
 			batch = batch[:0]
@@ -166,8 +164,6 @@ func sendRequest(client *http.Client, url string, body []byte) error {
 			req.Header.Set("Content-Type", "application/json")
 
 			req.Header.Set("Content-Encoding", "gzip")
-		} else {
-			req.Header.Set("Content-Type", "text/plain")
 		}
 		req.Header.Set("Accept-Encoding", "gzip")
 

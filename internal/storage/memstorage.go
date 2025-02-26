@@ -52,8 +52,8 @@ func (m *MemStorage) GetMetrics(ctx context.Context) (models.Metrics, error) {
 	return models.Metrics{Gauges: copyGauges, Counters: copyCounters}, nil
 }
 
-func (m *MemStorage) Ping() error {
-	return errors.New("db is not initialized")
+func (m *MemStorage) Ping(ctx context.Context) error {
+	return nil
 }
 
 func (m *MemStorage) UpdateAll(ctx context.Context, metrics []models.MetricJSON) error {

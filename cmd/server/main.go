@@ -12,6 +12,7 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose"
 	"github.com/runtime-metrics-course/internal/logger"
 	"github.com/runtime-metrics-course/internal/server"
 	"github.com/runtime-metrics-course/internal/storage"
@@ -41,7 +42,7 @@ func main() {
 
 	sm.SaverRun()
 
-	if err := server.InitSever(address); err != nil {
+	if err := server.InitServer(address); err != nil {
 		logger.Log.Fatal(err.Error())
 	}
 
@@ -98,11 +99,11 @@ func initDB(dsn string) error {
 	if err != nil {
 		return fmt.Errorf("ошибка подключения к БД: %w", err)
 	}
-	query := "CREATE TABLE IF NOT EXISTS metrics " +
-		"(id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL UNIQUE, type VARCHAR(50) NOT NULL, value DOUBLE PRECISION, delta BIGINT,updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
-	_, err = conn.Exec(query)
-	if err != nil {
-		return fmt.Errorf("проверка соединения не удалась: %w", err)
+	if err := goose.SetDialect("postgres"); err != nil {
+		return err
+	}
+	if err := goose.Up(conn, "migrations"); err != nil {
+		return fmt.Errorf("ошибка применения миграций: %w", err)
 	}
 
 	logger.Log.Sugar().Info("Подключение к БД успешно")
