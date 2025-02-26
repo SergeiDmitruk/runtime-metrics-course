@@ -102,7 +102,7 @@ func initDB(dsn string) error {
 	if err := goose.SetDialect("postgres"); err != nil {
 		return err
 	}
-	if err := goose.Up(conn, "migrations"); err != nil {
+	if err := goose.Up(conn, "internal/migrations"); err != nil {
 		return fmt.Errorf("ошибка применения миграций: %w", err)
 	}
 
