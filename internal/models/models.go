@@ -1,5 +1,11 @@
 package models
 
+import (
+	"errors"
+
+	"github.com/runtime-metrics-course/internal/logger"
+)
+
 const (
 	Gauge   = "gauge"
 	Counter = "counter"
@@ -25,4 +31,32 @@ func (m *MetricJSON) IsCounter() bool {
 
 func (m *MetricJSON) IsGauge() bool {
 	return m.MType == Gauge
+}
+
+func MarshalMetricToJSON(mType, name string, val interface{}) (*MetricJSON, error) {
+	metric := MetricJSON{
+		ID:    name,
+		MType: mType,
+	}
+	switch mType {
+	case Counter:
+		valInt, ok := val.(int64)
+		if !ok {
+			logger.Log.Error("parse error")
+			return &metric, errors.New("parse error")
+		}
+		metric.Delta = &valInt
+	case Gauge:
+
+		valFl, ok := val.(float64)
+		if !ok {
+			logger.Log.Error("parse error")
+			return &metric, errors.New("parse error")
+		}
+		metric.Value = &valFl
+	default:
+		logger.Log.Error("parse error")
+		return &metric, errors.New("parse error")
+	}
+	return &metric, nil
 }

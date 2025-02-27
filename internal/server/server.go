@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -10,7 +9,7 @@ import (
 	"github.com/runtime-metrics-course/internal/storage"
 )
 
-func InitSever(address string) error {
+func InitServer(address string) error {
 
 	storage, err := storage.GetStorageManager().GetStorage()
 	if err != nil {
@@ -18,10 +17,12 @@ func InitSever(address string) error {
 	}
 
 	r := chi.NewRouter()
-	r.Use(logger.LoggerMdlwr)
-	r.Use(middleware.CompressMdlwr)
+	r.Use(middleware.LoggerMiddleware)
+	r.Use(middleware.CompressMiddleware)
 	mh := GetNewMetricsHandler(storage)
 	r.Get("/", mh.GetMetrics)
+	r.Get("/ping", mh.PingDBHandler)
+	r.Post("/updates/", mh.UpdateAll)
 	r.Route("/value/", func(r chi.Router) {
 		r.Post("/", mh.GetMetricValueJSON)
 		r.Get("/{metric_type}/{name}", mh.GetMetricValue)
@@ -31,6 +32,6 @@ func InitSever(address string) error {
 		r.Post("/{metric_type}/{name}/{value}", mh.Update)
 	})
 
-	log.Println("Server start on", address)
+	logger.Log.Sugar().Infoln("Server start on", address)
 	return http.ListenAndServe(address, r)
 }

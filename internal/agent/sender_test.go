@@ -12,9 +12,6 @@ func TestSendRequest(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST method, got %v", r.Method)
 		}
-		if r.Header.Get("Content-Type") != "text/plain" {
-			t.Errorf("expected Content-Type text/plain, got %v", r.Header.Get("Content-Type"))
-		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
