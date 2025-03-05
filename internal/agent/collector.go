@@ -1,19 +1,20 @@
 package agent
 
 import (
-	"context"
 	"math/rand"
 	"runtime"
+	"time"
 
-	"github.com/runtime-metrics-course/internal/storage"
+	"github.com/runtime-metrics-course/internal/models"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 )
 
-func CollectRuntimeMetrics(storage storage.StorageIface) {
-	ctx := context.Background()
+func CollectRuntimeMetrics(ch chan<- Task) {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
-	gauges := map[string]float64{
+	memStat := map[string]float64{
 		"Alloc":         float64(memStats.Alloc),
 		"BuckHashSys":   float64(memStats.BuckHashSys),
 		"Frees":         float64(memStats.Frees),
@@ -44,9 +45,26 @@ func CollectRuntimeMetrics(storage storage.StorageIface) {
 		"RandomValue":   rand.Float64(),
 	}
 
-	for key, val := range gauges {
-		storage.UpdateGauge(ctx, key, val)
+	for name, value := range memStat {
+		ch <- Task{Metric: models.MetricJSON{ID: name, MType: models.Gauge, Value: &value}}
 	}
 
-	storage.UpdateCounter(ctx, "PollCount", 1)
+}
+
+func CollectGoupsutiMetrics(ch chan<- Task) {
+	var tasks []Task
+	v, _ := mem.VirtualMemory()
+	total := float64(v.Total)
+	free := float64(v.Free)
+	cpuUtilization := 0.0
+	cpuPercent, _ := cpu.Percent(time.Second, false)
+	if len(cpuPercent) > 0 {
+		cpuUtilization = cpuPercent[0]
+	}
+	tasks = append(tasks, Task{Metric: models.MetricJSON{ID: "TotalMemory", MType: models.Gauge, Value: &total}},
+		Task{Metric: models.MetricJSON{ID: "FreeMemory", MType: models.Gauge, Value: &free}},
+		Task{Metric: models.MetricJSON{ID: "CPUutilization1", MType: models.Gauge, Value: &cpuUtilization}})
+	for _, task := range tasks {
+		ch <- task
+	}
 }
