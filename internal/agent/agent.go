@@ -6,7 +6,7 @@ import (
 	"github.com/runtime-metrics-course/internal/storage"
 )
 
-func StartAgent(storage storage.StorageIface, address string, pollInterval, reportInterval time.Duration) error {
+func StartAgent(storage storage.StorageIface, address, key string, pollInterval, reportInterval time.Duration) error {
 
 	pollTicker := time.NewTicker(pollInterval)
 	reportTicker := time.NewTicker(reportInterval)
@@ -19,7 +19,7 @@ func StartAgent(storage storage.StorageIface, address string, pollInterval, repo
 		for range reportTicker.C {
 			//SendMetrics(storage, address)
 			//SendMetricsJSON(storage, address)
-			SendAll(storage, address)
+			SendAll(storage, address, key)
 		}
 
 	}()

@@ -19,6 +19,7 @@ import (
 )
 
 var address string
+var secretKey string
 var databaseDSN string
 var conn *sql.DB
 
@@ -42,7 +43,7 @@ func main() {
 
 	sm.SaverRun()
 
-	if err := server.InitServer(address); err != nil {
+	if err := server.InitServer(address, secretKey); err != nil {
 		logger.Log.Fatal(err.Error())
 	}
 
@@ -56,6 +57,7 @@ func main() {
 
 func ParseFlags() *storage.Cfg {
 	addressFlag := flag.String("a", "localhost:8080", "server address ")
+	keyFlag := flag.String("k", "", "ключ шифрования")
 	storeInterval := flag.Int("i", 300, "Интервал сохранения в секундах (0 = синхронное сохранение)")
 	filePath := flag.String("f", "metrics.json", "Путь до файла хранения метрик")
 	restore := flag.Bool("r", true, "Восстанавливать метрики при старте")
@@ -63,9 +65,13 @@ func ParseFlags() *storage.Cfg {
 
 	flag.Parse()
 	address = *addressFlag
+	secretKey = *keyFlag
 	databaseDSN = *databaseDSNFlag
 	if env, ok := os.LookupEnv("ADDRESS"); ok {
 		address = env
+	}
+	if env, ok := os.LookupEnv("KEY"); ok {
+		secretKey = env
 	}
 	if env, ok := os.LookupEnv("STORE_INTERVAL"); ok {
 		if val, err := strconv.Atoi(env); err == nil {
