@@ -36,18 +36,4 @@ func StartAgent(conf Config) error {
 		}
 	}
 
-	// go func() {
-	// 	for range pollTicker.C {
-	// 		go CollectRuntimeMetrics(taskChan)
-	// 	}
-	// }()
-	// go func() {
-	// 	for range reportTicker.C {
-	// 		//SendMetrics(storage, address)
-	// 		//SendMetricsJSON(storage, address)
-	// 		SendAll(storage, address, key)
-	// 	}
-
-	// }()
-	return nil
 }
