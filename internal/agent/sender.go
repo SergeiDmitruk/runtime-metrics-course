@@ -16,19 +16,39 @@ import (
 	"github.com/runtime-metrics-course/internal/models"
 	"github.com/runtime-metrics-course/internal/resilience"
 	"github.com/runtime-metrics-course/internal/storage"
+	"go.uber.org/zap"
 )
 
 const batchSize = 100
+
+func startWorkerPool(numWorkers int, tasks <-chan Task) {
+	var wg sync.WaitGroup
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go worker(i, tasks, &wg)
+	}
+	wg.Wait()
+}
 
 func worker(id int, tasks <-chan Task, wg *sync.WaitGroup) {
 	defer wg.Done()
 	client := &http.Client{Timeout: 5 * time.Second}
 	for task := range tasks {
 		data, _ := json.Marshal(task.Metric)
-		fmt.Printf("Worker %d sending metric: %s\n", id, data)
+		logger.Log.Info("Worker sending metric", zap.Int("worker_id", id), zap.String("metric", string(data)))
 		baseURL, err := url.Parse(cfg.Host)
-		err := sendRequest(client)
+		baseURL.Path += "/update/"
+		if err != nil {
+			logger.Log.Error(err.Error())
+			continue
+		}
+		err = sendRequest(client, baseURL.String(), data, cfg.SecretKey)
+		if err != nil {
+			logger.Log.Error(err.Error())
+			continue
+		}
 	}
+
 }
 
 func SendMetrics(storage storage.StorageIface, serverAddress, key string) error {

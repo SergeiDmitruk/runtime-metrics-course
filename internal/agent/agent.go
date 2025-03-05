@@ -7,11 +7,11 @@ import (
 )
 
 type Config struct {
-	Host           string
-	SecretKey      string
-	PollInterval   time.Duration
-	ReportInterval time.Duration
-	RateLimit      int
+	Host           string        `env:"ADDRESS"`
+	SecretKey      string        `env:"KEY"`
+	PollInterval   time.Duration `env:"POLL_INTERVAL"`
+	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
+	RateLimit      int           `env:"RATE_LIMIT"`
 }
 
 var cfg Config
@@ -25,13 +25,14 @@ func StartAgent(conf Config) error {
 	pollTicker := time.NewTicker(cfg.PollInterval)
 	reportTicker := time.NewTicker(cfg.ReportInterval)
 	taskChan := make(chan Task)
+	defer close(taskChan)
 	for {
 		select {
 		case <-pollTicker.C:
 			go CollectRuntimeMetrics(taskChan)
 			go CollectGoupsutiMetrics(taskChan)
 		case <-reportTicker.C:
-
+			go startWorkerPool(cfg.RateLimit, taskChan)
 		}
 	}
 
