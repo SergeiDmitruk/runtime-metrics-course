@@ -13,12 +13,11 @@ type Config struct {
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
 	RateLimit      int           `env:"RATE_LIMIT"`
 }
-
-var cfg Config
-
 type Task struct {
 	Metric models.MetricJSON
 }
+
+var cfg Config
 
 func StartAgent(conf Config) error {
 	cfg = conf
