@@ -17,7 +17,7 @@ func main() {
 	keyFlag := flag.String("k", "", "encrypt key")
 	pollIntervalFlag := flag.Int("p", 2, "poll interval")
 	reportIntervalFlag := flag.Int("r", 10, "report interval")
-	rateLimit := flag.Int("l", 1, "rate limit")
+	rateLimit := flag.Int("l", 10, "rate limit")
 
 	flag.Parse()
 	if err := logger.Init("info"); err != nil {
