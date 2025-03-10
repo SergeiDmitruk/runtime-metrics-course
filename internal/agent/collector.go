@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"fmt"
 	"math/rand"
 	"runtime"
 	"time"
@@ -52,19 +53,15 @@ func CollectRuntimeMetrics(ch chan<- Task) {
 }
 
 func CollectGoupsutiMetrics(ch chan<- Task) {
-	var tasks []Task
+
 	v, _ := mem.VirtualMemory()
 	total := float64(v.Total)
 	free := float64(v.Free)
-	cpuUtilization := 0.0
-	cpuPercent, _ := cpu.Percent(time.Second, false)
-	if len(cpuPercent) > 0 {
-		cpuUtilization = cpuPercent[0]
+	cpuPercents, _ := cpu.Percent(time.Second, false)
+	for i, cpuUtilization := range cpuPercents {
+		ch <- Task{Metric: models.MetricJSON{ID: fmt.Sprintf("CPUutilization %d", i), MType: models.Gauge, Value: &cpuUtilization}}
 	}
-	tasks = append(tasks, Task{Metric: models.MetricJSON{ID: "TotalMemory", MType: models.Gauge, Value: &total}},
-		Task{Metric: models.MetricJSON{ID: "FreeMemory", MType: models.Gauge, Value: &free}},
-		Task{Metric: models.MetricJSON{ID: "CPUutilization1", MType: models.Gauge, Value: &cpuUtilization}})
-	for _, task := range tasks {
-		ch <- task
-	}
+	ch <- Task{Metric: models.MetricJSON{ID: "TotalMemory", MType: models.Gauge, Value: &total}}
+	ch <- Task{Metric: models.MetricJSON{ID: "FreeMemory", MType: models.Gauge, Value: &free}}
+
 }

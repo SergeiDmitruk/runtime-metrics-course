@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"net/url"
 	"strings"
 	"time"
 
@@ -16,7 +17,7 @@ func main() {
 	keyFlag := flag.String("k", "", "encrypt key")
 	pollIntervalFlag := flag.Int("p", 2, "poll interval")
 	reportIntervalFlag := flag.Int("r", 10, "report interval")
-	rateLimit := flag.Int("l", 3, "rate limit")
+	rateLimit := flag.Int("l", 1, "rate limit")
 
 	flag.Parse()
 	if err := logger.Init("info"); err != nil {
@@ -36,6 +37,10 @@ func main() {
 
 	if !strings.Contains(config.Host, "http") {
 		config.Host = "http://" + config.Host
+	}
+	_, err = url.Parse(config.Host)
+	if err != nil {
+		logger.Log.Fatal(err.Error())
 	}
 
 	if err := agent.StartAgent(config); err != nil {

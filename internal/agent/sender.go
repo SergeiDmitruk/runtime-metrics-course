@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 
 	"github.com/runtime-metrics-course/internal/compress"
@@ -17,25 +16,22 @@ import (
 	"github.com/runtime-metrics-course/internal/resilience"
 	"github.com/runtime-metrics-course/internal/storage"
 	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 )
 
 const batchSize = 100
 
-func startWorkerPool(numWorkers int, tasks <-chan Task) {
-	var wg sync.WaitGroup
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go worker(i, tasks, &wg)
-	}
-	wg.Wait()
-}
+func startWorkerPool(rateLimit int, tasks <-chan Task) {
+	limiter := rate.NewLimiter(rate.Limit(rateLimit), 1)
+	go worker(tasks, limiter)
 
-func worker(id int, tasks <-chan Task, wg *sync.WaitGroup) {
-	defer wg.Done()
+}
+func worker(tasks <-chan Task, limiter *rate.Limiter) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	for task := range tasks {
+		limiter.Wait(context.Background())
 		data, _ := json.Marshal(task.Metric)
-		logger.Log.Info("Worker sending metric", zap.Int("worker_id", id), zap.String("metric", string(data)))
+		logger.Log.Info("Worker sending metric", zap.String("metric", string(data)))
 		baseURL, err := url.Parse(cfg.Host)
 		baseURL.Path += "/update/"
 		if err != nil {
