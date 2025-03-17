@@ -9,7 +9,7 @@ import (
 	"github.com/runtime-metrics-course/internal/storage"
 )
 
-func InitServer(address string) error {
+func InitServer(address, secretKey string) error {
 
 	storage, err := storage.GetStorageManager().GetStorage()
 	if err != nil {
@@ -19,6 +19,9 @@ func InitServer(address string) error {
 	r := chi.NewRouter()
 	r.Use(middleware.LoggerMiddleware)
 	r.Use(middleware.CompressMiddleware)
+	if secretKey != "" {
+		r.Use(middleware.NewHashMiddleware([]byte(secretKey)).Middleware)
+	}
 	mh := GetNewMetricsHandler(storage)
 	r.Get("/", mh.GetMetrics)
 	r.Get("/ping", mh.PingDBHandler)

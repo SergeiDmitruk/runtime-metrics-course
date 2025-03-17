@@ -11,14 +11,43 @@ import (
 
 	"github.com/runtime-metrics-course/internal/compress"
 	"github.com/runtime-metrics-course/internal/logger"
+	"github.com/runtime-metrics-course/internal/middleware"
 	"github.com/runtime-metrics-course/internal/models"
 	"github.com/runtime-metrics-course/internal/resilience"
 	"github.com/runtime-metrics-course/internal/storage"
+	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 )
 
 const batchSize = 100
 
-func SendMetrics(storage storage.StorageIface, serverAddress string) error {
+func startWorkerPool(rateLimit int, tasks <-chan Task) {
+	limiter := rate.NewLimiter(rate.Limit(rateLimit), 1)
+	go worker(tasks, limiter)
+
+}
+func worker(tasks <-chan Task, limiter *rate.Limiter) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	for task := range tasks {
+		limiter.Wait(context.Background())
+		data, _ := json.Marshal(task.Metric)
+		logger.Log.Info("Worker sending metric", zap.String("metric", string(data)))
+		baseURL, err := url.Parse(cfg.Host)
+		baseURL.Path += "/update/"
+		if err != nil {
+			logger.Log.Error(err.Error())
+			continue
+		}
+		err = sendRequest(client, baseURL.String(), data, cfg.SecretKey)
+		if err != nil {
+			logger.Log.Error(err.Error())
+			continue
+		}
+	}
+
+}
+
+func SendMetrics(storage storage.StorageIface, serverAddress, key string) error {
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	metrics, err := storage.GetMetrics(context.Background())
@@ -33,7 +62,7 @@ func SendMetrics(storage storage.StorageIface, serverAddress string) error {
 			return err
 		}
 		baseURL.Path += "/update/gauge/" + url.PathEscape(name) + "/" + url.PathEscape(fmt.Sprintf("%f", value))
-		if err := sendRequest(client, baseURL.String(), nil); err != nil {
+		if err := sendRequest(client, baseURL.String(), nil, key); err != nil {
 			logger.Log.Sugar().Errorf("Error sending gauge %s: %v", name, err)
 			return err
 		}
@@ -46,7 +75,7 @@ func SendMetrics(storage storage.StorageIface, serverAddress string) error {
 			return err
 		}
 		baseURL.Path += "/update/counter/" + url.PathEscape(name) + "/" + url.PathEscape(fmt.Sprintf("%d", value))
-		if err := sendRequest(client, baseURL.String(), nil); err != nil {
+		if err := sendRequest(client, baseURL.String(), nil, key); err != nil {
 			logger.Log.Sugar().Errorf("Error sending counter %s: %v", name, err)
 			return err
 		}
@@ -55,7 +84,7 @@ func SendMetrics(storage storage.StorageIface, serverAddress string) error {
 	return nil
 }
 
-func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
+func SendMetricsJSON(storage storage.StorageIface, serverAddress, key string) error {
 	client := &http.Client{Timeout: 5 * time.Second}
 	metrics, err := storage.GetMetrics(context.Background())
 	if err != nil {
@@ -76,7 +105,7 @@ func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 		}
 
 		url := fmt.Sprintf("%s/update/", serverAddress)
-		if err := sendRequest(client, url, data); err != nil {
+		if err := sendRequest(client, url, data, key); err != nil {
 			logger.Log.Sugar().Errorf("Error sending gauge %s: %v", name, err)
 			return err
 		}
@@ -96,7 +125,7 @@ func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 		}
 
 		url := fmt.Sprintf("%s/update/", serverAddress)
-		if err := sendRequest(client, url, data); err != nil {
+		if err := sendRequest(client, url, data, key); err != nil {
 			logger.Log.Sugar().Errorf("Error sending counter %s: %v", name, err)
 			return err
 		}
@@ -105,7 +134,7 @@ func SendMetricsJSON(storage storage.StorageIface, serverAddress string) error {
 	return nil
 }
 
-func SendAll(storage storage.StorageIface, serverAddress string) error {
+func SendAll(storage storage.StorageIface, serverAddress, key string) error {
 	client := &http.Client{Timeout: 5 * time.Second}
 	baseURL, err := url.Parse(serverAddress)
 	if err != nil {
@@ -139,7 +168,7 @@ func SendAll(storage storage.StorageIface, serverAddress string) error {
 			if err != nil {
 				return err
 			}
-			if err := sendRequest(client, baseURL.String(), data); err != nil {
+			if err := resilience.Retry(context.Background(), func() error { return sendRequest(client, baseURL.String(), data, key) }); err != nil {
 				return err
 			}
 			batch = batch[:0]
@@ -149,30 +178,31 @@ func SendAll(storage storage.StorageIface, serverAddress string) error {
 	return nil
 }
 
-func sendRequest(client *http.Client, url string, body []byte) error {
-	operation := func() error {
-		cbody, err := compress.CompressGzip(body)
-		if err != nil {
-			return fmt.Errorf("failed to compress request: %w", err)
-		}
+func sendRequest(client *http.Client, url string, body []byte, key string) error {
 
-		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(cbody))
-		if err != nil {
-			return fmt.Errorf("failed to create request: %w", err)
-		}
-		if body != nil {
-			req.Header.Set("Content-Type", "application/json")
-
-			req.Header.Set("Content-Encoding", "gzip")
-		}
-		req.Header.Set("Accept-Encoding", "gzip")
-
-		resp, err := client.Do(req)
-		if err != nil {
-			return fmt.Errorf("failed to send request: %w", err)
-		}
-		defer resp.Body.Close()
-		return nil
+	cbody, err := compress.CompressGzip(body)
+	if err != nil {
+		return fmt.Errorf("failed to compress request: %w", err)
 	}
-	return resilience.Retry(context.Background(), operation)
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(cbody))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Encoding", "gzip")
+		if key != "" {
+			req.Header.Set("HashSHA256", middleware.HmacSHA256(body, []byte(key)))
+		}
+	}
+	req.Header.Set("Accept-Encoding", "gzip")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+	return nil
+
 }

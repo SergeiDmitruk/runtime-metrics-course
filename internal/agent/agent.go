@@ -3,25 +3,36 @@ package agent
 import (
 	"time"
 
-	"github.com/runtime-metrics-course/internal/storage"
+	"github.com/runtime-metrics-course/internal/models"
 )
 
-func StartAgent(storage storage.StorageIface, address string, pollInterval, reportInterval time.Duration) error {
+type Config struct {
+	Host           string        `env:"ADDRESS"`
+	SecretKey      string        `env:"KEY"`
+	PollInterval   time.Duration `env:"POLL_INTERVAL"`
+	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
+	RateLimit      int           `env:"RATE_LIMIT"`
+}
+type Task struct {
+	Metric models.MetricJSON
+}
 
-	pollTicker := time.NewTicker(pollInterval)
-	reportTicker := time.NewTicker(reportInterval)
-	go func() {
-		for range pollTicker.C {
-			CollectRuntimeMetrics(storage)
-		}
-	}()
-	go func() {
-		for range reportTicker.C {
-			//SendMetrics(storage, address)
-			//SendMetricsJSON(storage, address)
-			SendAll(storage, address)
-		}
+var cfg Config
 
-	}()
-	return nil
+func StartAgent(conf Config) error {
+	cfg = conf
+	pollTicker := time.NewTicker(cfg.PollInterval)
+	reportTicker := time.NewTicker(cfg.ReportInterval)
+	taskChan := make(chan Task)
+	defer close(taskChan)
+	for {
+		select {
+		case <-pollTicker.C:
+			go CollectRuntimeMetrics(taskChan)
+			go CollectGoupsutiMetrics(taskChan)
+		case <-reportTicker.C:
+			go startWorkerPool(cfg.RateLimit, taskChan)
+		}
+	}
+
 }
