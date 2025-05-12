@@ -3,6 +3,9 @@ package server
 import (
 	"net/http"
 
+	"net/http/pprof"
+	_ "net/http/pprof"
+
 	"github.com/go-chi/chi"
 	"github.com/runtime-metrics-course/internal/logger"
 	"github.com/runtime-metrics-course/internal/middleware"
@@ -17,12 +20,14 @@ func InitServer(address, secretKey string) error {
 	}
 
 	r := chi.NewRouter()
+
 	r.Use(middleware.LoggerMiddleware)
 	r.Use(middleware.CompressMiddleware)
 	if secretKey != "" {
 		r.Use(middleware.NewHashMiddleware([]byte(secretKey)).Middleware)
 	}
 	mh := GetNewMetricsHandler(storage)
+	r.Mount("/debug", pprofRouter())
 	r.Get("/", mh.GetMetrics)
 	r.Get("/ping", mh.PingDBHandler)
 	r.Post("/updates/", mh.UpdateAll)
@@ -37,4 +42,14 @@ func InitServer(address, secretKey string) error {
 
 	logger.Log.Sugar().Infoln("Server start on", address)
 	return http.ListenAndServe(address, r)
+}
+
+func pprofRouter() http.Handler {
+	r := chi.NewRouter()
+	r.Get("/pprof/*", http.HandlerFunc(pprof.Index))
+	r.Get("/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+	r.Get("/pprof/profile", http.HandlerFunc(pprof.Profile))
+	r.Get("/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	r.Get("/pprof/trace", http.HandlerFunc(pprof.Trace))
+	return r
 }
