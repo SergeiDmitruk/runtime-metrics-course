@@ -20,10 +20,12 @@ import (
 	"github.com/runtime-metrics-course/internal/storage"
 )
 
-var address string
-var secretKey string
-var databaseDSN string
-var conn *sql.DB
+var (
+	address     string
+	secretKey   string
+	databaseDSN string
+	conn        *sql.DB
+)
 
 func main() {
 	cfg := ParseFlags()

@@ -75,7 +75,7 @@ func TestUpdateHandler(t *testing.T) {
 			tt.setupMock(storage)
 
 			r := chi.NewRouter()
-			h := GetNewMetricsHandler(storage)
+			h := NewMetricsHandler(storage)
 			r.Route("/update", func(r chi.Router) {
 				r.Post("/{metric_type}/{name}/{value}", h.Update)
 			})
@@ -176,7 +176,7 @@ func TestGetMetricValue(t *testing.T) {
 			tt.setupMock(storage)
 
 			r := chi.NewRouter()
-			h := GetNewMetricsHandler(storage)
+			h := NewMetricsHandler(storage)
 			r.Route("/value", func(r chi.Router) {
 				r.Get("/{metric_type}/{name}", h.GetMetricValue)
 			})
@@ -240,7 +240,7 @@ func TestGetMetricValueJSONHandler(t *testing.T) {
 			tt.setupMock(storage)
 
 			r := chi.NewRouter()
-			h := GetNewMetricsHandler(storage)
+			h := NewMetricsHandler(storage)
 			r.Post("/value/", h.GetMetricValueJSON)
 			testBody, err := json.Marshal(tt.body)
 			require.NoError(t, err)
@@ -322,7 +322,7 @@ func TestUpdateAllHandler(t *testing.T) {
 			tt.setupMock(storage)
 
 			r := chi.NewRouter()
-			h := GetNewMetricsHandler(storage)
+			h := NewMetricsHandler(storage)
 			r.Post("/update/", h.UpdateAll)
 
 			testBody, err := json.Marshal(tt.body)
@@ -349,7 +349,7 @@ func BenchmarkUpdateHandler(b *testing.B) {
 	storage.On("UpdateCounter", mock.Anything, "requests", int64(10)).Return(nil)
 
 	r := chi.NewRouter()
-	h := GetNewMetricsHandler(storage)
+	h := NewMetricsHandler(storage)
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/{metric_type}/{name}/{value}", h.Update)
 	})
@@ -372,7 +372,7 @@ func BenchmarkGetMetricValue(b *testing.B) {
 	}, nil)
 
 	r := chi.NewRouter()
-	h := GetNewMetricsHandler(storage)
+	h := NewMetricsHandler(storage)
 	r.Route("/value", func(r chi.Router) {
 		r.Get("/{metric_type}/{name}", h.GetMetricValue)
 	})
@@ -396,7 +396,7 @@ func BenchmarkGetMetricValueJSON(b *testing.B) {
 	}, nil)
 
 	r := chi.NewRouter()
-	h := GetNewMetricsHandler(storage)
+	h := NewMetricsHandler(storage)
 	r.Post("/value/", h.GetMetricValueJSON)
 
 	metric := models.MetricJSON{
@@ -423,7 +423,7 @@ func BenchmarkUpdateJSON(b *testing.B) {
 	}, nil)
 
 	r := chi.NewRouter()
-	h := GetNewMetricsHandler(storage)
+	h := NewMetricsHandler(storage)
 	r.Post("/update/", h.UpdateJSON)
 
 	metric := models.MetricJSON{
@@ -446,7 +446,7 @@ func BenchmarkUpdateAll(b *testing.B) {
 	storage.On("UpdateAll", mock.Anything, mock.Anything).Return(nil)
 
 	r := chi.NewRouter()
-	h := GetNewMetricsHandler(storage)
+	h := NewMetricsHandler(storage)
 	r.Post("/update/", h.UpdateAll)
 
 	metrics := []models.MetricJSON{

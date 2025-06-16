@@ -25,7 +25,7 @@ func InitServer(address, secretKey string) error {
 	if secretKey != "" {
 		r.Use(middleware.NewHashMiddleware([]byte(secretKey)).Middleware)
 	}
-	mh := GetNewMetricsHandler(storage)
+	mh := NewMetricsHandler(storage)
 	r.Mount("/debug", pprofRouter())
 	r.Get("/", mh.GetMetrics)
 	r.Get("/ping", mh.PingDBHandler)
