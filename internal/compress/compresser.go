@@ -63,6 +63,7 @@ func (c *compressedWriter) WriteHeader(statusCode int) {
 func (c *compressedWriter) Close() error {
 	if c.NeedCompress {
 		err := c.gw.Close()
+		c.gw.Reset(io.Discard)
 		gzipWriterPool.Put(c.gw)
 		return err
 	}
