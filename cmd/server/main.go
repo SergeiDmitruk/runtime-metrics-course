@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "net/http/pprof"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose"
 	"github.com/runtime-metrics-course/internal/logger"
