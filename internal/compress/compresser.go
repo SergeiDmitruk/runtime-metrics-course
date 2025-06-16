@@ -7,10 +7,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 )
-
-var cwInstance compressedWriter
-var crInstance compressReader
 
 type compressedWriter struct {
 	w             http.ResponseWriter
@@ -19,10 +17,19 @@ type compressedWriter struct {
 	NeedCompress  bool
 }
 
+var gzipWriterPool = sync.Pool{
+	New: func() any {
+		return gzip.NewWriter(io.Discard)
+	},
+}
+
 func NewCompressedWriter(w http.ResponseWriter) *compressedWriter {
+	gw := gzipWriterPool.Get().(*gzip.Writer)
+	gw.Reset(w)
+
 	return &compressedWriter{
 		w:  w,
-		gw: gzip.NewWriter(w),
+		gw: gw,
 	}
 }
 
@@ -55,7 +62,9 @@ func (c *compressedWriter) WriteHeader(statusCode int) {
 
 func (c *compressedWriter) Close() error {
 	if c.NeedCompress {
-		return c.gw.Close()
+		err := c.gw.Close()
+		gzipWriterPool.Put(c.gw)
+		return err
 	}
 	return nil
 }
@@ -69,29 +78,23 @@ func NewCompressReader(r io.ReadCloser) (*compressReader, error) {
 	if r == nil {
 		return nil, fmt.Errorf("request body is nil")
 	}
-
 	zr, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, err
 	}
 
-	return &compressReader{
-		r:  r,
-		zr: zr,
-	}, nil
+	return &compressReader{r: r, zr: zr}, nil
 }
 
 func (c *compressReader) Read(p []byte) (int, error) {
 	return c.zr.Read(p)
 }
-
 func (c *compressReader) Close() error {
-	if err := c.zr.Close(); err != nil {
+	if err := c.r.Close(); err != nil {
 		return err
 	}
-	return c.r.Close()
+	return nil
 }
-
 func CompressGzip(data []byte) ([]byte, error) {
 	var b bytes.Buffer
 	w := gzip.NewWriter(&b)
