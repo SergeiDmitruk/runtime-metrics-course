@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"net/http/pprof"
-	_ "net/http/pprof"
 
 	"github.com/go-chi/chi"
 	"github.com/runtime-metrics-course/internal/logger"
