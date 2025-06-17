@@ -24,7 +24,7 @@ type MetricsHandler struct {
 	storage storage.StorageIface
 }
 
-func GetNewMetricsHandler(storage storage.StorageIface) *MetricsHandler {
+func NewMetricsHandler(storage storage.StorageIface) *MetricsHandler {
 	return &MetricsHandler{storage: storage}
 }
 
