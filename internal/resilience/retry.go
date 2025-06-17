@@ -1,3 +1,4 @@
+// Package resilience provides utilities for handling transient failures in distributed systems.
 package resilience
 
 import (
@@ -12,6 +13,23 @@ import (
 	"github.com/runtime-metrics-course/internal/logger"
 )
 
+// Retry executes an operation with exponential backoff retry logic for transient errors.
+//
+// The function will retry the operation up to 3 times with delays of 1s, 3s, and 5s between attempts
+// if the error is determined to be transient. Transient errors include:
+//   - PostgreSQL errors (*pgconn.PgError)
+//   - Network errors (net.Error)
+//   - Unexpected EOF errors (io.ErrUnexpectedEOF)
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//   - operation: The function to execute and retry on transient failures
+//
+// Returns:
+//   - nil if the operation succeeds on any attempt
+//   - The original error if a non-retriable error occurs
+//   - ctx.Err() if the context is cancelled before completion
+//   - A wrapped error with retry context if all attempts fail
 func Retry(ctx context.Context, operation func() error) error {
 	var err error
 	var pgErr *pgconn.PgError
