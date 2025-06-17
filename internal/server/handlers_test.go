@@ -75,7 +75,7 @@ func TestUpdateHandler(t *testing.T) {
 			tt.setupMock(storage)
 
 			r := chi.NewRouter()
-			h := GetNewMetricsHandler(storage)
+			h := NewMetricsHandler(storage)
 			r.Route("/update", func(r chi.Router) {
 				r.Post("/{metric_type}/{name}/{value}", h.Update)
 			})
@@ -176,7 +176,7 @@ func TestGetMetricValue(t *testing.T) {
 			tt.setupMock(storage)
 
 			r := chi.NewRouter()
-			h := GetNewMetricsHandler(storage)
+			h := NewMetricsHandler(storage)
 			r.Route("/value", func(r chi.Router) {
 				r.Get("/{metric_type}/{name}", h.GetMetricValue)
 			})
@@ -240,7 +240,7 @@ func TestGetMetricValueJSONHandler(t *testing.T) {
 			tt.setupMock(storage)
 
 			r := chi.NewRouter()
-			h := GetNewMetricsHandler(storage)
+			h := NewMetricsHandler(storage)
 			r.Post("/value/", h.GetMetricValueJSON)
 			testBody, err := json.Marshal(tt.body)
 			require.NoError(t, err)
@@ -322,7 +322,7 @@ func TestUpdateAllHandler(t *testing.T) {
 			tt.setupMock(storage)
 
 			r := chi.NewRouter()
-			h := GetNewMetricsHandler(storage)
+			h := NewMetricsHandler(storage)
 			r.Post("/update/", h.UpdateAll)
 
 			testBody, err := json.Marshal(tt.body)
@@ -343,4 +343,122 @@ func TestUpdateAllHandler(t *testing.T) {
 
 func pointerToFloat64(v float64) *float64 {
 	return &v
+}
+func BenchmarkUpdateHandler(b *testing.B) {
+	storage := mocks.NewStorageIface(b)
+	storage.On("UpdateCounter", mock.Anything, "requests", int64(10)).Return(nil)
+
+	r := chi.NewRouter()
+	h := NewMetricsHandler(storage)
+	r.Route("/update", func(r chi.Router) {
+		r.Post("/{metric_type}/{name}/{value}", h.Update)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/update/counter/requests/10", nil)
+	w := httptest.NewRecorder()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		r.ServeHTTP(w, req)
+	}
+}
+
+func BenchmarkGetMetricValue(b *testing.B) {
+	storage := mocks.NewStorageIface(b)
+	storage.On("GetMetrics", mock.Anything).Return(models.Metrics{
+		Gauges: models.Gauges{
+			"temperature": 25.5,
+		},
+	}, nil)
+
+	r := chi.NewRouter()
+	h := NewMetricsHandler(storage)
+	r.Route("/value", func(r chi.Router) {
+		r.Get("/{metric_type}/{name}", h.GetMetricValue)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/value/gauge/temperature", nil)
+	w := httptest.NewRecorder()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		r.ServeHTTP(w, req)
+	}
+}
+
+func BenchmarkGetMetricValueJSON(b *testing.B) {
+	storage := mocks.NewStorageIface(b)
+	testValue := 25.5
+	storage.On("GetMetrics", mock.Anything).Return(models.Metrics{
+		Gauges: models.Gauges{
+			"temperature": testValue,
+		},
+	}, nil)
+
+	r := chi.NewRouter()
+	h := NewMetricsHandler(storage)
+	r.Post("/value/", h.GetMetricValueJSON)
+
+	metric := models.MetricJSON{
+		ID:    "temperature",
+		MType: models.Gauge,
+	}
+	testBody, _ := json.Marshal(metric)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/value/", bytes.NewBuffer(testBody))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+	}
+}
+
+func BenchmarkUpdateJSON(b *testing.B) {
+	storage := mocks.NewStorageIface(b)
+	storage.On("UpdateGauge", mock.Anything, "temperature", 25.5).Return(nil)
+	storage.On("GetMetrics", mock.Anything).Return(models.Metrics{
+		Gauges: models.Gauges{
+			"temperature": 25.5,
+		},
+	}, nil)
+
+	r := chi.NewRouter()
+	h := NewMetricsHandler(storage)
+	r.Post("/update/", h.UpdateJSON)
+
+	metric := models.MetricJSON{
+		ID:    "temperature",
+		MType: models.Gauge,
+		Value: pointerToFloat64(25.5),
+	}
+	testBody, _ := json.Marshal(metric)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/update/", bytes.NewBuffer(testBody))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+	}
+}
+
+func BenchmarkUpdateAll(b *testing.B) {
+	storage := mocks.NewStorageIface(b)
+	storage.On("UpdateAll", mock.Anything, mock.Anything).Return(nil)
+
+	r := chi.NewRouter()
+	h := NewMetricsHandler(storage)
+	r.Post("/update/", h.UpdateAll)
+
+	metrics := []models.MetricJSON{
+		{ID: "temperature", MType: models.Gauge, Value: pointerToFloat64(25.5)},
+		{ID: "humidity", MType: models.Gauge, Value: pointerToFloat64(60.0)},
+	}
+	testBody, _ := json.Marshal(metrics)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/update/", bytes.NewBuffer(testBody))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+	}
 }

@@ -261,3 +261,106 @@ func TestPgxStorage_UpdateAll(t *testing.T) {
 
 func int64Ptr(i int64) *int64       { return &i }
 func float64Ptr(f float64) *float64 { return &f }
+
+func BenchmarkPgxStorage_UpdateGauge(b *testing.B) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer db.Close()
+
+	storage := NewPgxStorage(db)
+	ctx := context.Background()
+	name := "test_gauge"
+	value := 42.5
+
+	// Настраиваем мок для каждого вызова
+	for i := 0; i < b.N; i++ {
+		mock.ExpectExec("INSERT INTO metrics").
+			WithArgs(name, models.Gauge, value, sqlmock.AnyArg()).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := storage.UpdateGauge(ctx, name, value); err != nil {
+			b.Error(err)
+		}
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		b.Error(err)
+	}
+}
+
+func BenchmarkPgxStorage_UpdateCounter(b *testing.B) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer db.Close()
+
+	storage := NewPgxStorage(db)
+	ctx := context.Background()
+	name := "test_counter"
+	delta := int64(1)
+
+	// Настраиваем мок для каждого вызова
+	for i := 0; i < b.N; i++ {
+		mock.ExpectExec("INSERT INTO metrics").
+			WithArgs(name, models.Counter, delta, sqlmock.AnyArg()).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := storage.UpdateCounter(ctx, name, delta); err != nil {
+			b.Error(err)
+		}
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		b.Error(err)
+	}
+}
+
+func BenchmarkPgxStorage_UpdateAll(b *testing.B) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer db.Close()
+
+	storage := NewPgxStorage(db)
+	ctx := context.Background()
+
+	metrics := []models.MetricJSON{
+		{ID: "counter1", MType: "counter", Delta: int64Ptr(10)},
+		{ID: "gauge1", MType: "gauge", Value: float64Ptr(1.23)},
+	}
+
+	// Настраиваем моки для всех итераций
+	for i := 0; i < b.N; i++ {
+		mock.ExpectBegin()
+		mock.ExpectPrepare("INSERT INTO metrics .* DO UPDATE SET delta")
+		mock.ExpectPrepare("INSERT INTO metrics .* DO UPDATE SET value")
+		mock.ExpectExec("INSERT INTO metrics .* DO UPDATE SET delta").
+			WithArgs("counter1", "counter", int64(10), sqlmock.AnyArg()).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("INSERT INTO metrics .* DO UPDATE SET value").
+			WithArgs("gauge1", "gauge", 1.23, sqlmock.AnyArg()).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := storage.UpdateAll(ctx, metrics); err != nil {
+			b.Error(err)
+		}
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		b.Error(err)
+	}
+}
