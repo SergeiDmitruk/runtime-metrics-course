@@ -14,10 +14,11 @@ const (
 
 // Cfg contains configuration for storage management
 type Cfg struct {
+	Conn     *sql.DB       // Database connection (for PostgreSQL storage)
 	Interval time.Duration // Interval for periodic saves (for memory storage)
 	FilePath string        // File path for persistence (for memory storage)
 	Restore  bool          // Whether to restore from file on startup
-	Conn     *sql.DB       // Database connection (for PostgreSQL storage)
+
 }
 
 // StorageManager manages the application's storage backend.
