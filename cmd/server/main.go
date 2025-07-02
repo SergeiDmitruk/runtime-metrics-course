@@ -27,7 +27,19 @@ var (
 	conn        *sql.DB
 )
 
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
+)
+
+func printBuildInfo() {
+	fmt.Fprintf(os.Stdout, "Build version: %s\n", buildVersion)
+	fmt.Fprintf(os.Stdout, "Build date: %s\n", buildDate)
+	fmt.Fprintf(os.Stdout, "Build commit: %s\n", buildCommit)
+}
 func main() {
+	printBuildInfo()
 	cfg := ParseFlags()
 
 	if err := logger.Init("info"); err != nil {

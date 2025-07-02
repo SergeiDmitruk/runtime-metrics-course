@@ -2,8 +2,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -12,7 +14,19 @@ import (
 	"github.com/runtime-metrics-course/internal/logger"
 )
 
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
+)
+
+func printBuildInfo() {
+	fmt.Fprintf(os.Stdout, "Build version: %s\n", buildVersion)
+	fmt.Fprintf(os.Stdout, "Build date: %s\n", buildDate)
+	fmt.Fprintf(os.Stdout, "Build commit: %s\n", buildCommit)
+}
 func main() {
+	printBuildInfo()
 	hostFlag := flag.String("a", "http://localhost:8080", "server config host:port")
 	keyFlag := flag.String("k", "", "encrypt key")
 	pollIntervalFlag := flag.Int("p", 2, "poll interval")

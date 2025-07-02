@@ -28,10 +28,11 @@ type Metrics struct {
 
 // MetricJSON represents a metric in JSON format for API communication
 type MetricJSON struct {
-	ID    string   `json:"id"`              // Metric name
-	MType string   `json:"type"`            // Metric type (gauge or counter)
 	Delta *int64   `json:"delta,omitempty"` // Value for counter metrics
 	Value *float64 `json:"value,omitempty"` // Value for gauge metrics
+	ID    string   `json:"id"`              // Metric name
+	MType string   `json:"type"`            // Metric type (gauge or counter)
+
 }
 
 // IsCounter checks if the metric is a counter type
