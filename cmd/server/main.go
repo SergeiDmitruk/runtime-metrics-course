@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "net/http/pprof"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose"
 	"github.com/runtime-metrics-course/internal/logger"
@@ -18,10 +20,12 @@ import (
 	"github.com/runtime-metrics-course/internal/storage"
 )
 
-var address string
-var secretKey string
-var databaseDSN string
-var conn *sql.DB
+var (
+	address     string
+	secretKey   string
+	databaseDSN string
+	conn        *sql.DB
+)
 
 func main() {
 	cfg := ParseFlags()
