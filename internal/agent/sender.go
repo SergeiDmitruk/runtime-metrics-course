@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/runtime-metrics-course/internal/compress"
@@ -87,7 +88,7 @@ func SendMetrics(storage storage.StorageIface, serverAddress, key string) error 
 			logger.Log.Error(err.Error())
 			return err
 		}
-		baseURL.Path += "/update/gauge/" + url.PathEscape(name) + "/" + url.PathEscape(fmt.Sprintf("%f", value))
+		baseURL.Path = path.Join(baseURL.Path, "update", "gauge", url.PathEscape(name), url.PathEscape(fmt.Sprintf("%f", value)))
 
 		if err := sendRequest(client, baseURL.String(), nil, key); err != nil {
 			logger.Log.Sugar().Errorf("Error sending gauge %s: %v", name, err)
@@ -102,7 +103,7 @@ func SendMetrics(storage storage.StorageIface, serverAddress, key string) error 
 			logger.Log.Error(err.Error())
 			return err
 		}
-		baseURL.Path += "/update/counter/" + url.PathEscape(name) + "/" + url.PathEscape(fmt.Sprintf("%d", value))
+		baseURL.Path = path.Join(baseURL.Path, "update", "counter", url.PathEscape(name), url.PathEscape(fmt.Sprintf("%d", value)))
 
 		if err := sendRequest(client, baseURL.String(), nil, key); err != nil {
 			logger.Log.Sugar().Errorf("Error sending counter %s: %v", name, err)

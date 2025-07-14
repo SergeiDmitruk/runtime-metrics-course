@@ -41,10 +41,12 @@ func (s *PgxStorage) Ping(ctx context.Context) error {
 // Implements StorageIface.UpdateGauge.
 func (s *PgxStorage) UpdateGauge(ctx context.Context, name string, value float64) error {
 	_, err := s.conn.ExecContext(ctx,
-		"INSERT INTO metrics (name, type, value, updated_at)"+
-			"VALUES ($1, $2, $3, $4)"+
-			" ON CONFLICT (name)"+
-			" DO UPDATE SET value = $3, updated_at = $4",
+		`
+        INSERT INTO metrics (name, type, value, updated_at)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (name)
+        DO UPDATE SET value = $3, updated_at = $4
+    `,
 		name, models.Gauge, value, time.Now().Format(time.RFC3339))
 	if err != nil {
 		return fmt.Errorf("failed to update gauge in database: %w", err)
@@ -57,10 +59,12 @@ func (s *PgxStorage) UpdateGauge(ctx context.Context, name string, value float64
 // Implements StorageIface.UpdateCounter.
 func (s *PgxStorage) UpdateCounter(ctx context.Context, name string, delta int64) error {
 	_, err := s.conn.ExecContext(ctx,
-		"INSERT INTO metrics (name, type, delta, updated_at)"+
-			"VALUES ($1, $2, $3, $4)"+
-			" ON CONFLICT (name)"+
-			" DO UPDATE SET delta = metrics.delta + $3, updated_at = $4",
+		`
+		INSERT INTO metrics (name, type, delta, updated_at)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (name)
+		DO UPDATE SET delta = metrics.delta + $3, updated_at = $4
+			`,
 		name, models.Counter, delta, time.Now().Format(time.RFC3339))
 	if err != nil {
 		return fmt.Errorf("failed to update counter in database: %w", err)
@@ -90,18 +94,22 @@ func (s *PgxStorage) UpdateAll(ctx context.Context, metrics []models.MetricJSON)
 
 	// Prepare statements for batch operations
 	stmtCounter, err := tx.PrepareContext(ctx,
-		"INSERT INTO metrics (name, type, delta, updated_at)"+
-			"VALUES ($1, $2, $3, $4)"+
-			" ON CONFLICT (name) DO UPDATE SET delta = metrics.delta + $3, updated_at = $4")
+		`
+		INSERT INTO metrics (name, type, delta, updated_at)
+		VALUES ($1, $2, $3, $4)
+		 ON CONFLICT (name) DO UPDATE SET delta = metrics.delta + $3, updated_at = $4
+		 `)
 	if err != nil {
 		return fmt.Errorf("failed to prepare counter statement: %w", err)
 	}
 	defer stmtCounter.Close()
 
 	stmtGauge, err := tx.PrepareContext(ctx,
-		"INSERT INTO metrics (name, type, value, updated_at)"+
-			"VALUES ($1, $2, $3, $4)"+
-			" ON CONFLICT (name) DO UPDATE SET value = $3, updated_at = $4")
+		`
+		INSERT INTO metrics (name, type, value, updated_at)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (name) DO UPDATE SET value = $3, updated_at = $4
+		 `)
 	if err != nil {
 		return fmt.Errorf("failed to prepare gauge statement: %w", err)
 	}
