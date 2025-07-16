@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/x509"
 	"flag"
 	"fmt"
 	"log"
@@ -42,7 +41,7 @@ func main() {
 	config := agent.Config{
 		Host:           *hostFlag,
 		SecretKey:      *keyFlag,
-		CryptoKey:      *cryptoPathFlag,
+		CryptoKeyPath:  *cryptoPathFlag,
 		PollInterval:   time.Duration(*pollIntervalFlag) * time.Second,
 		ReportInterval: time.Duration(*reportIntervalFlag) * time.Second,
 		RateLimit:      *rateLimit,
@@ -65,18 +64,4 @@ func main() {
 	}
 	logger.Log.Sugar().Info("agent start send to ", config.Host)
 	select {}
-}
-
-func NewCryptoMiddleware(CryptKeyPath string) (string, error) {
-	keyBytes, err := os.ReadFile(CryptKeyPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read private key: %w", err)
-	}
-
-	privateKey, err := x509.ParsePKCS1PrivateKey(keyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %w", err)
-	}
-
-	return &CryptoMiddleware{privateKey: privateKey}, nil
 }
