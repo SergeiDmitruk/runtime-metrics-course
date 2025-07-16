@@ -29,6 +29,7 @@ func main() {
 	printBuildInfo()
 	hostFlag := flag.String("a", "http://localhost:8080", "server config host:port")
 	keyFlag := flag.String("k", "", "encrypt key")
+	cryptoPathFlag := flag.String("crypto-key", "", "путь к файлу с публичным ключем")
 	pollIntervalFlag := flag.Int("p", 2, "poll interval")
 	reportIntervalFlag := flag.Int("r", 10, "report interval")
 	rateLimit := flag.Int("l", 10, "rate limit")
@@ -40,6 +41,7 @@ func main() {
 	config := agent.Config{
 		Host:           *hostFlag,
 		SecretKey:      *keyFlag,
+		CryptoKeyPath:  *cryptoPathFlag,
 		PollInterval:   time.Duration(*pollIntervalFlag) * time.Second,
 		ReportInterval: time.Duration(*reportIntervalFlag) * time.Second,
 		RateLimit:      *rateLimit,

@@ -3,19 +3,25 @@
 package agent
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"os"
 	"time"
 
+	"github.com/runtime-metrics-course/internal/logger"
 	"github.com/runtime-metrics-course/internal/models"
 )
 
 // Config contains agent configuration parameters.
 // Fields can be set via environment variables (see env tags).
 type Config struct {
-	Host           string        `env:"ADDRESS"`         // Server address to report metrics to
-	SecretKey      string        `env:"KEY"`             // Secret key for request signing
-	PollInterval   time.Duration `env:"POLL_INTERVAL"`   // How often to collect metrics
-	ReportInterval time.Duration `env:"REPORT_INTERVAL"` // How often to send metrics
-	RateLimit      int           `env:"RATE_LIMIT"`      // Maximum concurrent requests
+	Host           string         `env:"ADDRESS"`         // Server address to report metrics to
+	SecretKey      string         `env:"KEY"`             // Secret key for request signing
+	CryptoKeyPath  string         `env:"CRYPTO_KEY"`      // Path to public key
+	PollInterval   time.Duration  `env:"POLL_INTERVAL"`   // How often to collect metrics
+	ReportInterval time.Duration  `env:"REPORT_INTERVAL"` // How often to send metrics
+	RateLimit      int            `env:"RATE_LIMIT"`      // Maximum concurrent requests
+	PablicKey      *rsa.PublicKey // Public key for encrypt
 }
 
 // Task represents a metric reporting task containing the metric to be sent.
@@ -50,7 +56,7 @@ var cfg Config
 //	}
 func StartAgent(conf Config) error {
 	cfg = conf
-
+	cfg.PablicKey = getPublicKey(cfg.CryptoKeyPath)
 	// Initialize tickers for periodic operations
 	pollTicker := time.NewTicker(cfg.PollInterval)
 	reportTicker := time.NewTicker(cfg.ReportInterval)
@@ -75,4 +81,20 @@ func StartAgent(conf Config) error {
 			go startWorkerPool(cfg.RateLimit, taskChan)
 		}
 	}
+}
+
+func getPublicKey(CryptKeyPath string) *rsa.PublicKey {
+	keyBytes, err := os.ReadFile(CryptKeyPath)
+	if err != nil {
+		logger.Log.Sugar().Error(err)
+		return nil
+	}
+
+	key, err := x509.ParsePKCS1PublicKey(keyBytes)
+	if err != nil {
+		logger.Log.Sugar().Error(err)
+		return nil
+	}
+
+	return key
 }

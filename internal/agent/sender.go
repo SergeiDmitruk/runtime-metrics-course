@@ -3,10 +3,13 @@ package agent
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/runtime-metrics-course/internal/compress"
@@ -87,7 +90,7 @@ func SendMetrics(storage storage.StorageIface, serverAddress, key string) error 
 			logger.Log.Error(err.Error())
 			return err
 		}
-		baseURL.Path += "/update/gauge/" + url.PathEscape(name) + "/" + url.PathEscape(fmt.Sprintf("%f", value))
+		baseURL.Path = path.Join(baseURL.Path, "update", "gauge", url.PathEscape(name), url.PathEscape(fmt.Sprintf("%f", value)))
 
 		if err := sendRequest(client, baseURL.String(), nil, key); err != nil {
 			logger.Log.Sugar().Errorf("Error sending gauge %s: %v", name, err)
@@ -102,7 +105,7 @@ func SendMetrics(storage storage.StorageIface, serverAddress, key string) error 
 			logger.Log.Error(err.Error())
 			return err
 		}
-		baseURL.Path += "/update/counter/" + url.PathEscape(name) + "/" + url.PathEscape(fmt.Sprintf("%d", value))
+		baseURL.Path = path.Join(baseURL.Path, "update", "counter", url.PathEscape(name), url.PathEscape(fmt.Sprintf("%d", value)))
 
 		if err := sendRequest(client, baseURL.String(), nil, key); err != nil {
 			logger.Log.Sugar().Errorf("Error sending counter %s: %v", name, err)
@@ -243,7 +246,19 @@ func SendAll(storage storage.StorageIface, serverAddress, key string) error {
 // Returns:
 //   - error: if request fails
 func sendRequest(client *http.Client, url string, body []byte, key string) error {
-	cbody, err := compress.CompressGzip(body)
+	var encryptedBody []byte
+	var err error
+
+	if cfg.PablicKey != nil {
+
+		encryptedBody, err = rsa.EncryptPKCS1v15(rand.Reader, cfg.PablicKey, body)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt data: %w", err)
+		}
+	} else {
+		encryptedBody = body
+	}
+	cbody, err := compress.CompressGzip(encryptedBody)
 	if err != nil {
 		return fmt.Errorf("failed to compress request: %w", err)
 	}
