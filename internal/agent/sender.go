@@ -3,6 +3,8 @@ package agent
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -244,7 +246,19 @@ func SendAll(storage storage.StorageIface, serverAddress, key string) error {
 // Returns:
 //   - error: if request fails
 func sendRequest(client *http.Client, url string, body []byte, key string) error {
-	cbody, err := compress.CompressGzip(body)
+	var encryptedBody []byte
+	var err error
+
+	if cfg.PablicKey != nil {
+
+		encryptedBody, err = rsa.EncryptPKCS1v15(rand.Reader, cfg.PablicKey, body)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt data: %w", err)
+		}
+	} else {
+		encryptedBody = body
+	}
+	cbody, err := compress.CompressGzip(encryptedBody)
 	if err != nil {
 		return fmt.Errorf("failed to compress request: %w", err)
 	}

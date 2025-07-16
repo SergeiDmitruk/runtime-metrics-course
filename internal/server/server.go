@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/pprof"
 
@@ -30,7 +31,7 @@ import (
 //   - Request logging
 //   - Response compression
 //   - HMAC authentication (if secretKey provided)
-func InitServer(address, secretKey string) error {
+func InitServer(address, secretKey, cryptoKeyPath string) error {
 	storage, err := storage.GetStorageManager().GetStorage()
 	if err != nil {
 		return err
@@ -44,7 +45,13 @@ func InitServer(address, secretKey string) error {
 	if secretKey != "" {
 		r.Use(middleware.NewHashMiddleware([]byte(secretKey)).Middleware)
 	}
-
+	if cryptoKeyPath != "" {
+		cryptoMiddleware, err := middleware.NewCryptoMiddleware(cryptoKeyPath)
+		if err != nil {
+			return fmt.Errorf("failed to init crypto middleware: %w", err)
+		}
+		r.Use(cryptoMiddleware.Middleware)
+	}
 	// Initialize metrics handler
 	mh := NewMetricsHandler(storage)
 

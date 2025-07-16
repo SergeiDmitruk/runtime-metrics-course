@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"log"
@@ -29,6 +30,7 @@ func main() {
 	printBuildInfo()
 	hostFlag := flag.String("a", "http://localhost:8080", "server config host:port")
 	keyFlag := flag.String("k", "", "encrypt key")
+	cryptoPathFlag := flag.String("crypto-key", "", "путь к файлу с публичным ключем")
 	pollIntervalFlag := flag.Int("p", 2, "poll interval")
 	reportIntervalFlag := flag.Int("r", 10, "report interval")
 	rateLimit := flag.Int("l", 10, "rate limit")
@@ -40,6 +42,7 @@ func main() {
 	config := agent.Config{
 		Host:           *hostFlag,
 		SecretKey:      *keyFlag,
+		CryptoKey:      *cryptoPathFlag,
 		PollInterval:   time.Duration(*pollIntervalFlag) * time.Second,
 		ReportInterval: time.Duration(*reportIntervalFlag) * time.Second,
 		RateLimit:      *rateLimit,
@@ -62,4 +65,18 @@ func main() {
 	}
 	logger.Log.Sugar().Info("agent start send to ", config.Host)
 	select {}
+}
+
+func NewCryptoMiddleware(CryptKeyPath string) (string, error) {
+	keyBytes, err := os.ReadFile(CryptKeyPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read private key: %w", err)
+	}
+
+	privateKey, err := x509.ParsePKCS1PrivateKey(keyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	return &CryptoMiddleware{privateKey: privateKey}, nil
 }
