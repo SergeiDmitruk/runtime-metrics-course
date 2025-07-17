@@ -15,12 +15,12 @@ import (
 // Config contains agent configuration parameters.
 // Fields can be set via environment variables (see env tags).
 type Config struct {
-	Host           string         `env:"ADDRESS"`         // Server address to report metrics to
-	SecretKey      string         `env:"KEY"`             // Secret key for request signing
-	CryptoKeyPath  string         `env:"CRYPTO_KEY"`      // Path to public key
-	PollInterval   time.Duration  `env:"POLL_INTERVAL"`   // How often to collect metrics
-	ReportInterval time.Duration  `env:"REPORT_INTERVAL"` // How often to send metrics
-	RateLimit      int            `env:"RATE_LIMIT"`      // Maximum concurrent requests
+	Host           string         // Server address to report metrics to
+	SecretKey      string         // Secret key for request signing
+	CryptoKeyPath  string         // Path to public key
+	PollInterval   time.Duration  // How often to collect metrics
+	ReportInterval time.Duration  // How often to send metrics
+	RateLimit      int            // Maximum concurrent requests
 	PablicKey      *rsa.PublicKey // Public key for encrypt
 }
 
