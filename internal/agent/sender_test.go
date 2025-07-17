@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -44,7 +45,7 @@ func TestSendRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := sendRequest(tt.client, tt.url, nil, "")
+			err := sendRequest(context.Background(), tt.client, tt.url, nil, "")
 			if (err != nil) != tt.expectErr {
 				t.Errorf("expected error: %v, got: %v", tt.expectErr, err != nil)
 			}

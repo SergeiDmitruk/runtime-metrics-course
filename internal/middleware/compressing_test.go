@@ -76,7 +76,7 @@ func TestCompressMiddleware(t *testing.T) {
 				requestBody = strings.NewReader(tt.body)
 			}
 
-			req, _ := http.NewRequest("POST", ts.URL, requestBody)
+			req, _ := http.NewRequest(http.MethodPost, ts.URL, requestBody)
 			if tt.acceptEncoding != "" {
 				req.Header.Set("Accept-Encoding", tt.acceptEncoding)
 			}
