@@ -32,9 +32,9 @@ const (
 // Parameters:
 //   - rateLimit: Maximum number of requests per second
 //   - tasks: Channel receiving tasks to process
-func startWorkerPool(rateLimit int, tasks <-chan Task) {
+func startWorkerPool(ctx context.Context, rateLimit int, tasks <-chan Task) {
 	limiter := rate.NewLimiter(rate.Limit(rateLimit), 1)
-	go worker(tasks, limiter)
+	go worker(ctx, tasks, limiter)
 }
 
 // worker processes metric sending tasks from the channel with rate limiting.
@@ -42,11 +42,13 @@ func startWorkerPool(rateLimit int, tasks <-chan Task) {
 // Parameters:
 //   - tasks: Channel to receive tasks from
 //   - limiter: Rate limiter controlling request frequency
-func worker(tasks <-chan Task, limiter *rate.Limiter) {
+func worker(ctx context.Context, tasks <-chan Task, limiter *rate.Limiter) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	for task := range tasks {
 		// Wait for rate limiter allowance
-		limiter.Wait(context.Background())
+		if err := limiter.Wait(ctx); err != nil {
+			return
+		}
 
 		data, _ := json.Marshal(task.Metric)
 		logger.Log.Info("Worker sending metric", zap.String("metric", string(data)))
@@ -58,7 +60,7 @@ func worker(tasks <-chan Task, limiter *rate.Limiter) {
 		}
 		baseURL.Path += "/update/"
 
-		err = sendRequest(client, baseURL.String(), data, cfg.SecretKey)
+		err = sendRequest(ctx, client, baseURL.String(), data, cfg.SecretKey)
 		if err != nil {
 			logger.Log.Error(err.Error())
 			continue
@@ -92,7 +94,7 @@ func SendMetrics(storage storage.StorageIface, serverAddress, key string) error 
 		}
 		baseURL.Path = path.Join(baseURL.Path, "update", "gauge", url.PathEscape(name), url.PathEscape(fmt.Sprintf("%f", value)))
 
-		if err := sendRequest(client, baseURL.String(), nil, key); err != nil {
+		if err := sendRequest(context.Background(), client, baseURL.String(), nil, key); err != nil {
 			logger.Log.Sugar().Errorf("Error sending gauge %s: %v", name, err)
 			return err
 		}
@@ -107,7 +109,7 @@ func SendMetrics(storage storage.StorageIface, serverAddress, key string) error 
 		}
 		baseURL.Path = path.Join(baseURL.Path, "update", "counter", url.PathEscape(name), url.PathEscape(fmt.Sprintf("%d", value)))
 
-		if err := sendRequest(client, baseURL.String(), nil, key); err != nil {
+		if err := sendRequest(context.Background(), client, baseURL.String(), nil, key); err != nil {
 			logger.Log.Sugar().Errorf("Error sending counter %s: %v", name, err)
 			return err
 		}
@@ -148,7 +150,7 @@ func SendMetricsJSON(storage storage.StorageIface, serverAddress, key string) er
 		}
 
 		url := fmt.Sprintf("%s/update/", serverAddress)
-		if err := sendRequest(client, url, data, key); err != nil {
+		if err := sendRequest(context.Background(), client, url, data, key); err != nil {
 			logger.Log.Sugar().Errorf("Error sending gauge %s: %v", name, err)
 			return err
 		}
@@ -169,7 +171,7 @@ func SendMetricsJSON(storage storage.StorageIface, serverAddress, key string) er
 		}
 
 		url := fmt.Sprintf("%s/update/", serverAddress)
-		if err := sendRequest(client, url, data, key); err != nil {
+		if err := sendRequest(context.Background(), client, url, data, key); err != nil {
 			logger.Log.Sugar().Errorf("Error sending counter %s: %v", name, err)
 			return err
 		}
@@ -224,7 +226,7 @@ func SendAll(storage storage.StorageIface, serverAddress, key string) error {
 				return err
 			}
 			if err := resilience.Retry(context.Background(), func() error {
-				return sendRequest(client, baseURL.String(), data, key)
+				return sendRequest(context.Background(), client, baseURL.String(), data, key)
 			}); err != nil {
 				return err
 			}
@@ -245,7 +247,7 @@ func SendAll(storage storage.StorageIface, serverAddress, key string) error {
 //
 // Returns:
 //   - error: if request fails
-func sendRequest(client *http.Client, url string, body []byte, key string) error {
+func sendRequest(ctx context.Context, client *http.Client, url string, body []byte, key string) error {
 	var encryptedBody []byte
 	var err error
 
@@ -263,7 +265,7 @@ func sendRequest(client *http.Client, url string, body []byte, key string) error
 		return fmt.Errorf("failed to compress request: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(cbody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(cbody))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}

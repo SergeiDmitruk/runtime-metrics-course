@@ -3,6 +3,7 @@
 package agent
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"os"
@@ -22,6 +23,7 @@ type Config struct {
 	ReportInterval time.Duration  // How often to send metrics
 	RateLimit      int            // Maximum concurrent requests
 	PablicKey      *rsa.PublicKey // Public key for encrypt
+	Ctx            context.Context
 }
 
 // Task represents a metric reporting task containing the metric to be sent.
@@ -72,13 +74,18 @@ func StartAgent(conf Config) error {
 	// Main agent loop
 	for {
 		select {
+		case <-cfg.Ctx.Done():
+			// Context cancelled, finish processing remaining tasks
+
+			logger.Log.Info("Shutting down agent...")
+			return nil
 		case <-pollTicker.C:
 			// Collect metrics in separate goroutines
 			go CollectRuntimeMetrics(taskChan)
 			go CollectGoupsutiMetrics(taskChan)
 		case <-reportTicker.C:
 			// Start workers to send metrics
-			go startWorkerPool(cfg.RateLimit, taskChan)
+			go startWorkerPool(cfg.Ctx, cfg.RateLimit, taskChan)
 		}
 	}
 }
