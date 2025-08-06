@@ -155,5 +155,9 @@ func LoadConfig() (*AgentConfig, error) {
 		}
 	}
 
+	if cfg.TrustedSubnet != "" {
+
+	}
+
 	return cfg, nil
 }

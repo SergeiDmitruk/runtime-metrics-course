@@ -31,7 +31,7 @@ import (
 //   - Request logging
 //   - Response compression
 //   - HMAC authentication (if secretKey provided)
-func InitServer(address, secretKey, cryptoKeyPath string) error {
+func InitServer(address, secretKey, cryptoKeyPath, subnet string) error {
 	storage, err := storage.GetStorageManager().GetStorage()
 	if err != nil {
 		return err
@@ -51,6 +51,9 @@ func InitServer(address, secretKey, cryptoKeyPath string) error {
 			return fmt.Errorf("failed to init crypto middleware: %w", err)
 		}
 		r.Use(cryptoMiddleware.Middleware)
+	}
+	if subnet != "" {
+		r.Use(middleware.NewWhiteListMiddleware(subnet).Middleware)
 	}
 	// Initialize metrics handler
 	mh := NewMetricsHandler(storage)

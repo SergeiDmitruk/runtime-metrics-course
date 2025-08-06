@@ -6,9 +6,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -35,6 +37,7 @@ type ServerConfig struct {
 	FilePath      string        `json:"store_file"`
 	Restore       bool          `json:"restore"`
 	DatabaseDSN   string        `json:"database_dsn"`
+	TrustedSubnet string        `json:"trusted_subnet"`
 }
 
 func printBuildInfo() {
@@ -78,7 +81,7 @@ func main() {
 
 	sm.SaverRun()
 
-	if err := server.InitServer(cfg.Address, cfg.SecretKey, cfg.CryptoKey); err != nil {
+	if err := server.InitServer(cfg.Address, cfg.SecretKey, cfg.CryptoKey, cfg.TrustedSubnet); err != nil {
 		logger.Log.Fatal(err.Error())
 	}
 
@@ -134,7 +137,9 @@ func LoadConfig() (*ServerConfig, error) {
 		if fileCfg.SecretKey != "" {
 			cfg.SecretKey = fileCfg.SecretKey
 		}
-
+		if fileCfg.TrustedSubnet != "" {
+			cfg.TrustedSubnet = fileCfg.TrustedSubnet
+		}
 		cfg.Restore = fileCfg.Restore
 	}
 
@@ -147,6 +152,7 @@ func LoadConfig() (*ServerConfig, error) {
 	flag.StringVar(&cfg.FilePath, "f", cfg.FilePath, "Путь до файла хранения метрик")
 	flag.BoolVar(&cfg.Restore, "r", cfg.Restore, "Восстанавливать метрики при старте")
 	flag.StringVar(&cfg.DatabaseDSN, "d", cfg.DatabaseDSN, "DB DSN")
+	flag.StringVar(&cfg.TrustedSubnet, "t", cfg.TrustedSubnet, "Подсеть для доступа к API")
 	flag.Parse()
 
 	if envAddr := os.Getenv("ADDRESS"); envAddr != "" {
@@ -174,7 +180,18 @@ func LoadConfig() (*ServerConfig, error) {
 	if envDSN := os.Getenv("DATABASE_DSN"); envDSN != "" {
 		cfg.DatabaseDSN = envDSN
 	}
+	if envSubnet := os.Getenv("TRUSTED_SUBNET"); envSubnet != "" {
+		cfg.TrustedSubnet = envSubnet
+	}
+	if cfg.TrustedSubnet != "" {
+		cfg.TrustedSubnet = strings.TrimSpace(cfg.TrustedSubnet)
 
+		_, _, err := net.ParseCIDR(strings.TrimSpace(cfg.TrustedSubnet))
+		if err != nil {
+			return nil, fmt.Errorf("invalid subnet: %s", cfg.TrustedSubnet)
+		}
+
+	}
 	return cfg, nil
 }
 
