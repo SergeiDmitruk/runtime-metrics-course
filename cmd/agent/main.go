@@ -154,6 +154,5 @@ func LoadConfig() (*AgentConfig, error) {
 			cfg.RateLimit = val
 		}
 	}
-
 	return cfg, nil
 }

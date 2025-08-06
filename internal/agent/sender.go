@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -278,7 +279,9 @@ func sendRequest(ctx context.Context, client *http.Client, url string, body []by
 		}
 	}
 	req.Header.Set("Accept-Encoding", "gzip")
-
+	if ip, err := getLocalIP(); err == nil {
+		req.Header.Set("X-Real-IP", ip)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
@@ -286,4 +289,19 @@ func sendRequest(ctx context.Context, client *http.Client, url string, body []by
 	defer resp.Body.Close()
 
 	return nil
+}
+
+func getLocalIP() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no local IP found")
 }
