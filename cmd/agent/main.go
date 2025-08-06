@@ -154,10 +154,5 @@ func LoadConfig() (*AgentConfig, error) {
 			cfg.RateLimit = val
 		}
 	}
-
-	if cfg.TrustedSubnet != "" {
-
-	}
-
 	return cfg, nil
 }
