@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -21,113 +22,174 @@ import (
 )
 
 var (
-	address     string
-	secretKey   string
-	databaseDSN string
-	conn        *sql.DB
-)
-
-var (
 	buildVersion string = "N/A"
 	buildDate    string = "N/A"
 	buildCommit  string = "N/A"
 )
+
+type ServerConfig struct {
+	Address       string        `json:"address"`
+	SecretKey     string        `json:"key"`
+	CryptoKey     string        `json:"crypto_key"`
+	StoreInterval time.Duration `json:"store_interval"`
+	FilePath      string        `json:"store_file"`
+	Restore       bool          `json:"restore"`
+	DatabaseDSN   string        `json:"database_dsn"`
+}
 
 func printBuildInfo() {
 	fmt.Fprintf(os.Stdout, "Build version: %s\n", buildVersion)
 	fmt.Fprintf(os.Stdout, "Build date: %s\n", buildDate)
 	fmt.Fprintf(os.Stdout, "Build commit: %s\n", buildCommit)
 }
+
 func main() {
 	printBuildInfo()
-	cfg := ParseFlags()
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
 
 	if err := logger.Init("info"); err != nil {
 		log.Fatal(err)
 	}
-	if databaseDSN != "" {
-		if err := initDB(databaseDSN); err != nil {
+
+	var conn *sql.DB
+	if cfg.DatabaseDSN != "" {
+		conn, err = initDB(cfg.DatabaseDSN)
+		if err != nil {
 			logger.Log.Fatal(err.Error())
 		}
+		defer conn.Close()
 	}
-	defer conn.Close()
-	cfg.Conn = conn
-	sm, err := storage.NewStorageManager(cfg)
+
+	storageCfg := &storage.Cfg{
+		Interval: cfg.StoreInterval,
+		FilePath: cfg.FilePath,
+		Restore:  cfg.Restore,
+		Conn:     conn,
+	}
+
+	sm, err := storage.NewStorageManager(storageCfg)
 	if err != nil {
 		logger.Log.Fatal(err.Error())
 	}
 
 	sm.SaverRun()
 
-	if err := server.InitServer(address, secretKey); err != nil {
+	if err := server.InitServer(cfg.Address, cfg.SecretKey, cfg.CryptoKey); err != nil {
 		logger.Log.Fatal(err.Error())
 	}
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 
 	<-sigChan
 	fmt.Println("Завершение работы...")
 	sm.SaverStop()
 }
 
-func ParseFlags() *storage.Cfg {
-	addressFlag := flag.String("a", "localhost:8080", "server address ")
-	keyFlag := flag.String("k", "", "ключ шифрования")
-	storeInterval := flag.Int("i", 300, "Интервал сохранения в секундах (0 = синхронное сохранение)")
-	filePath := flag.String("f", "metrics.json", "Путь до файла хранения метрик")
-	restore := flag.Bool("r", true, "Восстанавливать метрики при старте")
-	databaseDSNFlag := flag.String("d", "", "DB DSN")
+func LoadConfig() (*ServerConfig, error) {
 
+	cfg := &ServerConfig{
+		Address:       "localhost:8080",
+		StoreInterval: 300 * time.Second,
+		FilePath:      "metrics.json",
+		Restore:       true,
+	}
+
+	var configFile string
+
+	if configFile == "" {
+		configFile = os.Getenv("CONFIG")
+	}
+
+	if configFile != "" {
+		fileData, err := os.ReadFile(configFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read config file: %w", err)
+		}
+
+		var fileCfg ServerConfig
+		if err := json.Unmarshal(fileData, &fileCfg); err != nil {
+			return nil, fmt.Errorf("failed to parse config file: %w", err)
+		}
+
+		if fileCfg.Address != "" {
+			cfg.Address = fileCfg.Address
+		}
+		if fileCfg.StoreInterval != 0 {
+			cfg.StoreInterval = fileCfg.StoreInterval
+		}
+		if fileCfg.FilePath != "" {
+			cfg.FilePath = fileCfg.FilePath
+		}
+		if fileCfg.DatabaseDSN != "" {
+			cfg.DatabaseDSN = fileCfg.DatabaseDSN
+		}
+		if fileCfg.CryptoKey != "" {
+			cfg.CryptoKey = fileCfg.CryptoKey
+		}
+		if fileCfg.SecretKey != "" {
+			cfg.SecretKey = fileCfg.SecretKey
+		}
+
+		cfg.Restore = fileCfg.Restore
+	}
+
+	flag.StringVar(&configFile, "c", "", "Path to config file")
+	flag.StringVar(&configFile, "config", "", "Path to config file")
+	flag.StringVar(&cfg.Address, "a", cfg.Address, "server address")
+	flag.StringVar(&cfg.SecretKey, "k", cfg.SecretKey, "ключ шифрования")
+	flag.DurationVar(&cfg.StoreInterval, "i", cfg.StoreInterval, "Интервал сохранения в секундах (0 = синхронное сохранение)")
+	flag.StringVar(&cfg.CryptoKey, "crypto-key", cfg.CryptoKey, "путь к файлу с приватным ключом")
+	flag.StringVar(&cfg.FilePath, "f", cfg.FilePath, "Путь до файла хранения метрик")
+	flag.BoolVar(&cfg.Restore, "r", cfg.Restore, "Восстанавливать метрики при старте")
+	flag.StringVar(&cfg.DatabaseDSN, "d", cfg.DatabaseDSN, "DB DSN")
 	flag.Parse()
-	address = *addressFlag
-	secretKey = *keyFlag
-	databaseDSN = *databaseDSNFlag
-	if env, ok := os.LookupEnv("ADDRESS"); ok {
-		address = env
+
+	if envAddr := os.Getenv("ADDRESS"); envAddr != "" {
+		cfg.Address = envAddr
 	}
-	if env, ok := os.LookupEnv("KEY"); ok {
-		secretKey = env
+	if envKey := os.Getenv("KEY"); envKey != "" {
+		cfg.SecretKey = envKey
 	}
-	if env, ok := os.LookupEnv("STORE_INTERVAL"); ok {
-		if val, err := strconv.Atoi(env); err == nil {
-			*storeInterval = val
+	if envCryptoKey := os.Getenv("CRYPTO_KEY"); envCryptoKey != "" {
+		cfg.CryptoKey = envCryptoKey
+	}
+	if envStoreInt := os.Getenv("STORE_INTERVAL"); envStoreInt != "" {
+		if val, err := strconv.Atoi(envStoreInt); err == nil {
+			cfg.StoreInterval = time.Duration(val) * time.Second
 		}
 	}
-	if env, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
-		*filePath = env
+	if envFilePath := os.Getenv("FILE_STORAGE_PATH"); envFilePath != "" {
+		cfg.FilePath = envFilePath
 	}
-	if env, ok := os.LookupEnv("RESTORE"); ok {
-		if val, err := strconv.ParseBool(env); err == nil {
-			*restore = val
+	if envRestore := os.Getenv("RESTORE"); envRestore != "" {
+		if val, err := strconv.ParseBool(envRestore); err == nil {
+			cfg.Restore = val
 		}
 	}
-	if env, ok := os.LookupEnv("DATABASE_DSN"); ok {
-		databaseDSN = env
-	}
-	Cfg := &storage.Cfg{
-		Interval: time.Duration(*storeInterval) * time.Second,
-		FilePath: *filePath,
-		Restore:  *restore,
+	if envDSN := os.Getenv("DATABASE_DSN"); envDSN != "" {
+		cfg.DatabaseDSN = envDSN
 	}
 
-	return Cfg
+	return cfg, nil
 }
 
-func initDB(dsn string) error {
-	var err error
-
-	conn, err = sql.Open("pgx", dsn)
+func initDB(dsn string) (*sql.DB, error) {
+	conn, err := sql.Open("pgx", dsn)
 	if err != nil {
-		return fmt.Errorf("ошибка подключения к БД: %w", err)
+		return nil, fmt.Errorf("ошибка подключения к БД: %w", err)
 	}
 	if err := goose.SetDialect("postgres"); err != nil {
-		return err
+		return nil, err
 	}
 	if err := goose.Up(conn, "internal/migrations"); err != nil {
-		return fmt.Errorf("ошибка применения миграций: %w", err)
+		return nil, fmt.Errorf("ошибка применения миграций: %w", err)
 	}
 
 	logger.Log.Sugar().Info("Подключение к БД успешно")
-	return nil
+	return conn, nil
 }

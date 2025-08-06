@@ -61,6 +61,7 @@ func CollectGoupsutiMetrics(ch chan<- Task) {
 	for i, cpuUtilization := range cpuPercents {
 		ch <- Task{Metric: models.MetricJSON{ID: fmt.Sprintf("CPUutilization %d", i), MType: models.Gauge, Value: &cpuUtilization}}
 	}
+
 	ch <- Task{Metric: models.MetricJSON{ID: "TotalMemory", MType: models.Gauge, Value: &total}}
 	ch <- Task{Metric: models.MetricJSON{ID: "FreeMemory", MType: models.Gauge, Value: &free}}
 
