@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package server;
+
+option go_package = "github.com/runtime-metrics-course/proto";
+
+service MetricsService {
+  rpc UpdateMetric (MetricRequest) returns (MetricResponse) {}
+  rpc GetMetric (GetMetricRequest) returns (MetricResponse) {}
+  rpc UpdateMetrics (MetricsListRequest) returns (MetricsListResponse) {}
+  rpc Ping (PingRequest) returns (PingResponse) {}
+  rpc GetMetrics (Empty) returns (MetricsListResponse) {}
+}
+
+message Empty {}
+
+message PingRequest {}
+message PingResponse {
+  bool success = 1;
+}
+
+message MetricRequest {
+  string id = 1;
+  string mtype = 2;
+  oneof value {
+    double gauge_value = 3;
+    int64 counter_delta = 4;
+  }
+}
+
+message GetMetricRequest {
+  string id = 1;
+  string mtype = 2;
+}
+
+message MetricResponse {
+  string id = 1;
+  string mtype = 2;
+  oneof value {
+    double gauge_value = 3;
+    int64 counter_delta = 4;
+  }
+}
+
+message MetricsListRequest {
+  repeated MetricRequest metrics = 1;
+}
+
+message MetricsListResponse {
+  repeated MetricResponse metrics = 1;
+}
